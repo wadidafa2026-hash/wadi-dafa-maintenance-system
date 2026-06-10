@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    host: true, // <--- السطر السحري دا الزيادة الحتفتح الباب طوالي!
+    host: true, // السطر السحري حقك ضابط وما فيهو كلام
     proxy: {
       '/api': {
         target: 'http://localhost:3000',
