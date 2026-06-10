@@ -1,0 +1,33 @@
+import express from 'express';
+import cors from 'cors';
+import 'dotenv/config';
+
+// استيراد الشبابيك (الـ Routes) الصممناها قبيل
+import equipmentRouter from './routes/equipment.js';
+import maintenanceRouter from './routes/maintenance.js';
+import authRouter from './routes/auth.js';
+
+const app = express();
+
+// تشغيل الـ Middleware الأساسية
+app.use(cors()); // السماح بالاتصال من أي مكان (الفرونتد)
+app.use(express.json()); // عشان السيرفر يفهم البيانات الجاية بصيغة JSON
+
+// ربط وتفعيل الـ Routes مع روابط الـ API الرئيسية
+app.use('/api/equipment', equipmentRouter);
+app.use('/api/maintenance', maintenanceRouter);
+app.use('/api/auth', authRouter);
+
+// رابط تجريبي سريع للتأكد من أن السيرفر شغال وزي الورد
+app.get('/', (req, res) => {
+  res.send('🚀 سيرفر صيانة آليات وادي دفا يعمل بنجاح ومية مية!');
+});
+
+// تحديد المنفذ (Port) اللي حيقعد السيرفر يتسمع فيه
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`=============================================`);
+  console.log(`🤖 Wadi Dafa Server is running on port ${PORT}`);
+  console.log(`=============================================`);
+});
