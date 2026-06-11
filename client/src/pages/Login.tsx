@@ -18,8 +18,11 @@ export default function Login({ onLogin }: LoginProps) {
     setLoading(true);
 
     try {
-      // إرسال الطلب للسيرفر عبر الـ Proxy الـعملناهو قبيل
-      const response = await fetch('/api/auth/login', {
+      // قراءة الرابط الحي من متغيرات بيئة Vercel
+      const baseUrl = import.meta.env.VITE_API_URL || '';
+      
+      // دمج الرابط مع مسار تسجيل الدخول
+      const response = await fetch(`${baseUrl}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
