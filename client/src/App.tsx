@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 
-// تعريف نوع بيانات المستخدم الصلاحية
+// تعريف نوع بيانات المستخدم والصلاحية
 interface User {
   id: number;
   username: string;
@@ -11,19 +11,33 @@ interface User {
 }
 
 function App() {
-  // كرت الحفظ حق المستخدم الحالي (لو null معناه ما مسجل دخول)
-  const [user, setUser] = useState<User | null>(null);
+  // قراءة المستخدم المخزن في المتصفح تلقائياً عند تحميل الصفحة
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('wadi_dafa_user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  // دالة تسجيل الدخول: تحفظ البيانات في الـ State وفي كاش المتصفح لضمان عدم الخروج
+  const handleLogin = (userData: User) => {
+    setUser(userData);
+    localStorage.setItem('wadi_dafa_user', JSON.stringify(userData));
+  };
+
+  // دالة تسجيل الخروج: تنظف الـ State وتمسح الكاش تماماً
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('wadi_dafa_user');
+  };
 
   return (
     <div className="min-h-screen bg-slate-50" dir="rtl">
       {!user ? (
-        // لو ما مسجل دخول، اعرض صفحة تسجيل الدخول ومرر ليها دالة الحفظ
-        <Login onLogin={setUser} />
+        // تمرير دالة الحفظ الذكية لصفحة اللوجين
+        <Login onLogin={handleLogin} />
       ) : (
-        // لو مسجل دخول، افتح اللوحة الرئيسية ومرر بياناته ودالة الخروج
-        <Dashboard user={user} onLogout={() => setUser(null)} />
-      )
-    }
+        // تمرير بيانات المستخدم ودالة الخروج الآمنة للوحة التحكم
+        <Dashboard user={user} onLogout={handleLogout} />
+      )}
     </div>
   );
 }
