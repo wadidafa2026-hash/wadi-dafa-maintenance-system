@@ -19,9 +19,12 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
   const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // قراءة الرابط الحي من متغيرات بيئة Vercel
+  const baseUrl = import.meta.env.VITE_API_URL || '';
+
   // 1. جلب الآليات من السيرفر طوالي أول ما تفتح الصفحة
   useEffect(() => {
-    fetch('/api/equipment')
+    fetch(`${baseUrl}/api/equipment`)
       .then((res) => res.json())
       .then((data) => {
         setEquipmentList(data);
@@ -37,7 +40,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         ]);
         setLoading(false);
       });
-  }, []);
+  }, [baseUrl]);
 
   // 2. دالة سريعة لتغيير حالة المعدة (مثلاً إرسال للورشة أو إخراج)
   const updateStatus = async (id: number, newStatus: 'active' | 'maintenance' | 'stopped') => {
@@ -46,7 +49,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       setEquipmentList(prev => prev.map(eq => eq.id === id ? { ...eq, status: newStatus } : eq));
       
       // إرسال التعديل للسيرفر ليتحفظ في قاعدة البيانات Neon
-      await fetch(`/api/equipment/${id}/status`, {
+      await fetch(`${baseUrl}/api/equipment/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -117,7 +120,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
               <p className="text-xs font-medium text-slate-500">في الورشة</p>
               <p className="text-2xl font-bold text-amber-600 mt-1">{maintenance}</p>
             </div>
-            <div className="bg-amber-50 text-amber-600 p-3 rounded-xl"><Wrench size={24} /></div>
+            <div className="bg-amber-50 text-amber-700 p-3 rounded-xl"><Wrench size={24} /></div>
           </div>
 
           <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
