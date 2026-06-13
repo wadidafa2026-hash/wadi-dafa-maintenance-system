@@ -118,7 +118,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       setMaintenanceLogs(logData);
     } catch (err) {
       console.error(err);
-    } finaly {
+    } finally {
       setLoading(false);
     }
   };
