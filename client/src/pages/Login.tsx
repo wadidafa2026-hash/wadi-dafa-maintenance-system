@@ -1,7 +1,9 @@
+// client/src/pages/Login.tsx
 import { useState } from "react";
 
 interface LoginProps {
-  onLogin: (user: { name: string; role: string }) => void;
+  // تحديث الأنواع لتتطابق تماماً مع متطلبات ملف App.tsx وتمنع الخطأ البرمجي
+  onLogin: (user: { id: number; username: string; name: string; role: 'super_admin' | 'viewer' }) => void;
 }
 
 export default function Login({ onLogin }: LoginProps) {
@@ -15,7 +17,6 @@ export default function Login({ onLogin }: LoginProps) {
     setError("");
     setLoading(true);
 
-    // ملاحظة: يمكنك ربط هذا الجزء مع الباكيند الخاص بك لاحقاً
     const baseUrl = import.meta.env.VITE_API_URL || "";
     try {
       const response = await fetch(`${baseUrl}/api/auth/login`, {
@@ -27,7 +28,13 @@ export default function Login({ onLogin }: LoginProps) {
       const data = await response.json();
 
       if (response.ok) {
-        onLogin({ name: data.user.name, role: data.user.role });
+        // تمرير البيانات كاملة كما يستقبلها السيرفر لتغذية الستيت في التطبيق الرئيسي
+        onLogin({ 
+          id: data.user.id,
+          username: data.user.username,
+          name: data.user.name, 
+          role: data.user.role 
+        });
       } else {
         setError(data.message || "بيانات الدخول غير صحيحة");
       }
@@ -101,7 +108,7 @@ export default function Login({ onLogin }: LoginProps) {
         </form>
 
         <div className="text-center">
-          <p className="text-[10px] text-slate-500">© {new Date().getFullYear()} بوابة الإدارة الرقمية المشفرة - دفا</p>
+          <p className="text-[10px] text-slate-500">© 2026 بوابة الإدارة الرقمية المشفرة - دفا</p>
         </div>
 
       </div>
