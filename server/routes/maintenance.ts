@@ -1,82 +1,115 @@
 import { Router } from 'express';
-import { db } from '../db/index.js';
-import { maintenanceLogs, equipment } from '../db/schema.js';
+import { db } from '../db';
+import { maintenanceLogs, equipment, projects } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
 
 const router = Router();
 
-// 1. رابط جلب كل سجلات الصيانة في السيستم (GET /api/maintenance)
-router.get('/', async (req, res) => {
+// 1. تسجيل بلاغ عطل جديد ("تعطلت") مع أخذ لقطة للمشروع الحالي تلقائياً
+// POST /api/maintenance/breakdown
+router.post('/breakdown', async (req, res) => {
   try {
-    const logs = await db.select().from(maintenanceLogs).orderBy(desc(maintenanceLogs.entryDate));
-    res.json(logs);
-  } catch (error) {
-    res.status(500).json({ message: 'حدث خطأ أثناء جلب سجلات الصيانة', error });
-  }
-});
+    const { equipmentId, breakdownDate, details } = req.body;
 
-// 2. رابط إدخال معدة للورشة أو إخراجها من الخدمة (POST /api/maintenance/enter)
-router.post('/enter', async (req, res) => {
-  try {
-    const { equipmentId, maintenanceType, details } = req.body;
-
-    if (!equipmentId || !maintenanceType) {
-      return res.status(400).json({ message: 'الرجاء تحديد المعدة ونوع الصيانة' });
+    if (!equipmentId || !breakdownDate) {
+      return res.status(400).json({ error: 'معرف الآلية وتاريخ العطل حقول مطلوبة' });
     }
 
-    // أ/ جلب بيانات المعدة الحالية عشان نعرف السائق الماشي بيها أسي ونثبته في العطل
-    const asset = await db.select().from(equipment).where(eq(equipment.id, equipmentId));
-    if (asset.length === 0) {
-      return res.status(404).json({ message: 'المعدة غير موجودة' });
+    // [خطوة ذكية] جلب بيانات الآلية مع اسم مشروعها الحالي لأخذ اللقطة التاريخية
+    const targetEquipment = await db
+      .select({
+        id: equipment.id,
+        currentProjectId: equipment.currentProjectId,
+        projectName: projects.name,
+      })
+      .from(equipment)
+      .leftJoin(projects, eq(equipment.currentProjectId, projects.id))
+      .where(eq(equipment.id, Number(equipmentId)))
+      .limit(1);
+
+    if (targetEquipment.length === 0) {
+      return res.status(404).json({ error: 'الآلية غير موجودة بالنظام' });
     }
 
-    const currentDriverAtFault = asset[0].currentDriver;
-    // نحدد الحالة الجيدة بناءً على نوع الحركة (إما صيانة أو خارج الخدمة تماماً)
-    const nextStatus = maintenanceType === 'خارج الخدمة' ? 'out_of_service' : 'in_maintenance';
+    // تحديد اسم المشروع للحفظ التاريخي (إذا لم تكن في مشروع يكتب: خارج المشاريع)
+    const currentProjectName = targetEquipment[0].projectName || 'خارج المشاريع / الورشة المركزية';
 
-    // ب/ فتح أورنيك (سجل) صيانة جديد وتثبيت السائق
+    // أ) إنشاء سجل العطل الجديد
     const newLog = await db.insert(maintenanceLogs).values({
-      equipmentId,
-      driverAtFault: currentDriverAtFault,
-      maintenanceType,
-      details,
+      equipmentId: Number(equipmentId),
+      projectNameSnapshot: currentProjectName,
+      breakdownDate: new Date(breakdownDate), // تحويل التاريخ القادم من التقويم لـ Date Object
+      details: details ? details.trim() : null,
+      status: 'broken', // الحالة الافتراضية للبلاغ: لسه متعطلة
     }).returning();
 
-    // ج/ تحديث حالة المعدة في جدولها الرئيسي
-    await db.update(equipment)
-      .set({ status: nextStatus })
-      .where(eq(equipment.id, equipmentId));
+    // ب) تحديث حالة المعدة نفسها في جدول الأسطول لتصبح متعطلة
+    await db
+      .update(equipment)
+      .set({ status: 'broken' })
+      .where(eq(equipment.id, Number(equipmentId)));
 
-    res.status(201).json({ message: 'تم إدخال المعدة للصيانة وتوثيق السائق بنجاح', log: newLog[0] });
+    return res.status(201).json({ success: true, log: newLog[0] });
   } catch (error) {
-    res.status(500).json({ message: 'حدث خطأ أثناء إدخال المعدة للصيانة', error });
+    console.error('Error logging breakdown:', error);
+    return res.status(500).json({ error: 'فشل في تسجيل بلاغ العطل' });
   }
 });
 
-// 3. رابط إخراج المعدة من الصيانة وإعادتها للخدمة (POST /api/maintenance/exit/:logId)
-router.post('/exit/:logId', async (req, res) => {
+// 2. إغلاق بلاغ العطل وتحديد تاريخ الجاهزية ("تم الإصلاح")
+// PUT /api/maintenance/repair/:logId
+router.put('/repair/:logId', async (req, res) => {
   try {
-    const logId = parseInt(req.params.logId);
+    const { logId } = req.params;
+    const { repairDate } = req.body; // تاريخ الإصلاح المختار من التقويم في الفرونت إند
 
-    // أ/ جلب سجل الصيانة المفتوح عشان نعرف الـ equipmentId
-    const logEntry = await db.select().from(maintenanceLogs).where(eq(maintenanceLogs.id, logId));
-    if (logEntry.length === 0) {
-      return res.status(404).json({ message: 'سجل الصيانة هذا غير موجود' });
+    if (!repairDate) {
+      return res.status(400).json({ error: 'تاريخ الإصلاح والجاهزية مطلوب' });
     }
 
-    // ب/ تحديث السجل بوضع تاريخ الخروج (الآن)
-    await db.update(maintenanceLogs)
-      .set({ exitDate: new Date() })
-      .where(eq(maintenanceLogs.id, logId));
+    // أ) تحديث سجل العطل وإغلاقه
+    const updatedLog = await db
+      .update(maintenanceLogs)
+      .set({
+        repairDate: new Date(repairDate),
+        status: 'repaired', // تم الإصلاح بنجاح
+      })
+      .where(eq(maintenanceLogs.id, Number(logId)))
+      .returning();
 
-    // ج/ إرجاع حالة المعدة في الجدول الرئيسي لتكون جاهزة ومتاحة (available)
-    await db.update(equipment)
+    if (updatedLog.length === 0) {
+      return res.status(404).json({ error: 'سجل العطل غير موجود' });
+    }
+
+    // ب) إعادة حالة المعدة المرتبطة بهذا العطل لتصبح جاهزة (available) تلقائياً
+    await db
+      .update(equipment)
       .set({ status: 'available' })
-      .where(eq(equipment.id, logEntry[0].equipmentId));
+      .where(eq(equipment.id, updatedLog[0].equipmentId));
 
-    res.json({ message: 'تم إخراج المعدة من الصيانة وإعادتها للخدمة بنجاح' });
+    return res.status(200).json({ success: true, log: updatedLog[0] });
   } catch (error) {
-    res.status(500).json({ message: 'حدث خطأ أثناء إخراج المعدة من الصيانة', error });
+    console.error('Error closing maintenance log:', error);
+    return res.status(500).json({ error: 'حدث خطأ أثناء إغلاق بلاغ الصيانة' });
+  }
+});
+
+// 3. جلب التاريخ الصيانة الكامل لآلية معينة (يظهر داخل بروفايل المعدة)
+// GET /api/maintenance/history/:equipmentId
+router.get('/history/:equipmentId', async (req, res) => {
+  try {
+    const { equipmentId } = req.params;
+
+    const history = await db
+      .select()
+      .from(maintenanceLogs)
+      .where(eq(maintenanceLogs.equipmentId, Number(equipmentId)))
+      .orderBy(desc(maintenanceLogs.breakdownDate)); // ترتيب من الأحدث للأقدم حسب تاريخ العطل
+
+    return res.status(200).json(history);
+  } catch (error) {
+    console.error('Error fetching maintenance history:', error);
+    return res.status(500).json({ error: 'فشل في جلب سجلات صيانة المعدة' });
   }
 });
 

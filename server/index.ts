@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import 'dotenv/config';
+import projectRouter from './routes/projects.js';
+import purchasesRouter from './routes/purchases.js'; // استيراد راوت المشتريات الجديد
 
 // استيراد الشبابيك (الـ Routes) الصممناها قبيل
 import equipmentRouter from './routes/equipment.js';
@@ -17,6 +19,9 @@ app.use(express.json()); // عشان السيرفر يفهم البيانات ا
 app.use('/api/equipment', equipmentRouter);
 app.use('/api/maintenance', maintenanceRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/projects', projectRouter);
+app.use('/api/purchases', purchasesRouter); // تفعيل رابط المشتريات المالي
+
 
 // رابط تجريبي سريع للتأكد من أن السيرفر شغال وزي الورد
 app.get('/', (req, res) => {
