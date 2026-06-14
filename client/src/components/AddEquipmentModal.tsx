@@ -30,13 +30,21 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({ isOpen, on
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // جلب المشاريع لتغذية الـ Dropdown
+  // جلب المشاريع عبر توجيه فيرسيل التلقائي
   useEffect(() => {
     if (isOpen) {
       fetch('/api/projects')
-        .then((res) => res.json())
-        .then((data) => setProjects(data))
-        .catch((err) => console.error('Error fetching projects:', err));
+        .then((res) => {
+          if (!res.ok) throw new Error('فشل في جلب المشاريع من السيرفر');
+          return res.json();
+        })
+        .then((data) => {
+          if (Array.isArray(data)) setProjects(data);
+        })
+        .catch((err) => {
+          console.error('Error fetching projects:', err);
+          setError('لم نتمكن من سحب المشاريع، تأكد من مسار الباكيند الرئيسي');
+        });
     }
   }, [isOpen]);
 
@@ -91,7 +99,6 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({ isOpen, on
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4" dir="rtl">
       <div className="w-full max-w-2xl bg-white rounded-xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in duration-200">
         
-        {/* الهيدر الأنيق باللون الأزرق المعتمد لأسطول وادي دفا */}
         <div className="bg-blue-700 text-white px-6 py-4 flex justify-between items-center">
           <h3 className="text-lg font-bold">تسجيل آلية جديدة بالأسطول</h3>
           <button onClick={onClose} className="text-white/80 hover:text-white text-2xl font-bold">&times;</button>
@@ -104,7 +111,6 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({ isOpen, on
             </div>
           )}
 
-          {/* التبديل الذكي بين معدة ومركبة */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">تصنيف الآلية</label>
             <div className="grid grid-cols-2 gap-3">
@@ -169,7 +175,6 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({ isOpen, on
             </div>
           </div>
 
-          {/* الحقل الشرطي الحركي المميز لأسطول وادي دفا */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
             {type === 'equipment' ? (
               <div>
@@ -192,7 +197,6 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({ isOpen, on
             )}
           </div>
 
-          {/* روابط الصور الثلاثة للمطابقة الكاملة */}
           <div className="space-y-2">
             <label className="block text-xs font-semibold text-gray-500">روابط معاينة الصور (Cloudinary Links)</label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">

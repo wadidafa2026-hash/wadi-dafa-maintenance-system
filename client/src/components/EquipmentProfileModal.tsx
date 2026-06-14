@@ -55,7 +55,7 @@ export const EquipmentProfileModal: React.FC<EquipmentProfileModalProps> = ({ eq
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // جلب سجل الصيانة الخاص بالآلية فور فتح المودال
+  // جلب سجل الصيانة بالمسار النسبي التلقائي لبوابات فيرسيل
   const fetchMaintenanceHistory = async () => {
     if (!equipment) return;
     setLoadingHistory(true);
@@ -75,7 +75,6 @@ export const EquipmentProfileModal: React.FC<EquipmentProfileModalProps> = ({ eq
   useEffect(() => {
     if (isOpen && equipment) {
       fetchMaintenanceHistory();
-      // تصفير الواجهات الفرعية
       setShowBreakdownForm(false);
       setShowRepairForm(false);
       setShowPurchaseForm(false);
@@ -105,7 +104,7 @@ export const EquipmentProfileModal: React.FC<EquipmentProfileModalProps> = ({ eq
       onRefresh();
     } catch (err: any) {
       setError(err.message);
-    } {
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -130,7 +129,7 @@ export const EquipmentProfileModal: React.FC<EquipmentProfileModalProps> = ({ eq
       onRefresh();
     } catch (err: any) {
       setError(err.message);
-    } {
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -167,26 +166,24 @@ export const EquipmentProfileModal: React.FC<EquipmentProfileModalProps> = ({ eq
         body: JSON.stringify({ maintenanceLogId: activeLogIdForPurchase, items: purchaseItems }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'فشل حفظ المشتريات');
+      if (!res.ok) throw new Error(data.error || 'فشل حفظ Mشتريات');
 
       setShowPurchaseForm(false);
       setPurchaseItems([{ itemName: '', price: 0 }]);
       alert('تم حفظ فاتورة قطع الغيار بنجاح في سجل العطل ماليًا!');
     } catch (err: any) {
       setError(err.message);
-    } {
+    } finally {
       setIsSubmitting(false);
     }
   };
 
-  // البحث عن البلاغ المفتوح حالياً (إن وجد)
   const activeBrokenLog = history.find(log => log.status === 'broken');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4" dir="rtl">
       <div className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
         
-        {/* الهيدر المخصص بالهوية الفنية */}
         <div className="bg-slate-800 text-white px-6 py-4 flex justify-between items-center">
           <div>
             <span className="text-xs font-bold uppercase tracking-wider bg-blue-600 px-2 py-0.5 rounded ml-2">
@@ -197,16 +194,13 @@ export const EquipmentProfileModal: React.FC<EquipmentProfileModalProps> = ({ eq
           <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl font-bold">&times;</button>
         </div>
 
-        {/* جسم البروفايل */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-700">
-          
           {error && (
             <div className="bg-red-50 border-r-4 border-red-500 text-red-700 p-3 rounded text-sm">
               ⚠️ {error}
             </div>
           )}
 
-          {/* 1. كارت البيانات السريعة والتحكم بالحالة */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
             <div className="space-y-1.5 text-sm">
               <p><span className="text-slate-400">التصنيف الفني:</span> {equipment.type === 'equipment' ? '⚙️ معدة ثقيلة' : '🚚 مركبة حركية'}</p>
@@ -214,7 +208,6 @@ export const EquipmentProfileModal: React.FC<EquipmentProfileModalProps> = ({ eq
               <p><span className="text-slate-400">الموقع الحالي المسجل:</span> <span className="font-semibold text-slate-800">{equipment.projectName || 'خارج الخدمة (الورشة)'}</span></p>
             </div>
 
-            {/* أزرار الأكشن التفاعلية حسب حالة المعدة الحالية */}
             <div className="flex flex-col justify-center items-end gap-2">
               {equipment.status === 'available' ? (
                 <button
@@ -234,7 +227,7 @@ export const EquipmentProfileModal: React.FC<EquipmentProfileModalProps> = ({ eq
                   {activeBrokenLog && (
                     <button
                       onClick={() => { setShowPurchaseForm(true); setActiveLogIdForPurchase(activeBrokenLog.id); }}
-                      className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-all shadow-md"
+                      className="w-full bg-amber-50 hover:bg-amber-600 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-all shadow-md"
                     >
                       💰 ربط فاتورة قطع غيار ومشتريات للعطل
                     </button>
@@ -244,7 +237,7 @@ export const EquipmentProfileModal: React.FC<EquipmentProfileModalProps> = ({ eq
             </div>
           </div>
 
-          {/* حركي أ: فورم بلاغ العطل الجديد */}
+          {/* فورم بلاغ العطل */}
           {showBreakdownForm && (
             <form onSubmit={handleLogBreakdown} className="bg-red-50/50 p-4 rounded-xl border border-red-200 animate-in slide-in-from-top-2 space-y-3">
               <h4 className="text-sm font-bold text-red-900">أورنيك بلاغ عطل جديد</h4>
@@ -260,12 +253,12 @@ export const EquipmentProfileModal: React.FC<EquipmentProfileModalProps> = ({ eq
               </div>
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setShowBreakdownForm(false)} className="px-3 py-1 text-xs text-gray-500">إلغاء</button>
-                <button type="submit" disabled={isSubmitting} className="px-4 py-1 text-xs bg-red-600 text-white rounded font-medium">تأكيد البلاغ وتحويل الآلية للأحمر</button>
+                <button type="submit" disabled={isSubmitting} className="px-4 py-1 text-xs bg-red-600 text-white rounded font-medium">تأكيد البلاغ</button>
               </div>
             </form>
           )}
 
-          {/* حركي ب: فورم إغلاق البلاغ والجاهزية */}
+          {/* فورم الإصلاح */}
           {showRepairForm && activeBrokenLog && (
             <form onSubmit={(e) => handleLogRepair(e, activeBrokenLog.id)} className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-200 animate-in slide-in-from-top-2 space-y-3">
               <h4 className="text-sm font-bold text-emerald-900">إعلان جاهزية الآلية والعودة للميدان</h4>
@@ -275,25 +268,24 @@ export const EquipmentProfileModal: React.FC<EquipmentProfileModalProps> = ({ eq
               </div>
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setShowRepairForm(false)} className="px-3 py-1 text-xs text-gray-500">إلغاء</button>
-                <button type="submit" disabled={isSubmitting} className="px-4 py-1 text-xs bg-emerald-600 text-white rounded font-medium">تأكيد الجاهزية والتشغيل طوالي</button>
+                <button type="submit" disabled={isSubmitting} className="px-4 py-1 text-xs bg-emerald-600 text-white rounded font-medium">تأكيد الجاهزية</button>
               </div>
             </form>
           )}
 
-          {/* حركي ج: فورم المشتريات الديناميكي المتعدد (الفاتورة) */}
+          {/* فورم المشتريات الفاتورة */}
           {showPurchaseForm && (
             <form onSubmit={handleSavePurchases} className="bg-amber-50/40 p-4 rounded-xl border border-amber-200 space-y-3 animate-in fade-in">
               <h4 className="text-sm font-bold text-amber-900">قائمة مشتريات وقطع غيار العطل الحالي</h4>
-              
               {purchaseItems.map((item, index) => (
                 <div key={index} className="flex gap-2 items-center">
                   <input
-                    type="text" required placeholder="اسم البيان / قطعة الغيار (مثال: راديتر)" value={item.itemName}
+                    type="text" required placeholder="اسم قطعة الغيار" value={item.itemName}
                     onChange={(e) => handlePurchaseItemChange(index, 'itemName', e.target.value)}
                     className="flex-1 p-2 border rounded text-xs bg-white"
                   />
                   <input
-                    type="number" required min="1" placeholder="السعر (ريال)" value={item.price || ''}
+                    type="number" required min="1" placeholder="السعر" value={item.price || ''}
                     onChange={(e) => handlePurchaseItemChange(index, 'price', e.target.value)}
                     className="w-28 p-2 border rounded text-xs bg-white"
                   />
@@ -302,44 +294,41 @@ export const EquipmentProfileModal: React.FC<EquipmentProfileModalProps> = ({ eq
                   )}
                 </div>
               ))}
-
               <div className="flex justify-between items-center pt-2">
                 <button type="button" onClick={addPurchaseRow} className="text-xs text-blue-700 font-semibold hover:underline">
                   ➕ إضافة سطر قطعة غيار أخرى
                 </button>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => setShowPurchaseForm(false)} className="px-3 py-1 text-xs text-gray-500">إلغاء</button>
-                  <button type="submit" disabled={isSubmitting} className="px-4 py-1 text-xs bg-amber-600 text-white rounded font-medium">حفظ الفاتورة بالسيستم</button>
+                  <button type="submit" disabled={isSubmitting} className="px-4 py-1 text-xs bg-amber-600 text-white rounded font-medium">حفظ الفاتورة</button>
                 </div>
               </div>
             </form>
           )}
 
-          {/* 2. شريط السجل الزمني للتاريخ الفني (Timeline) */}
+          {/* سجل تاريخ الصيانة */}
           <div className="space-y-3">
             <h4 className="text-sm font-bold text-slate-800 border-b pb-1">📋 سجل الصيانة التاريخي للآلية</h4>
             {loadingHistory ? (
-              <p className="text-xs text-slate-400">جاري تحميل السجلات التاريخية من السيرفر...</p>
+              <p className="text-xs text-slate-400">جاري تحميل السجلات التاريخية...</p>
             ) : history.length === 0 ? (
-              <p className="text-xs text-slate-400">لا توجد بلاغات صيانة سابقة مسجلة لهذه الآلية.</p>
+              <p className="text-xs text-slate-400">لا توجد بلاغات صيانة سابقة.</p>
             ) : (
               <div className="space-y-3 border-r-2 border-slate-200 mr-2 pr-4 relative">
                 {history.map((log) => (
                   <div key={log.id} className="relative text-xs">
-                    {/* نقطة البيان على الخط */}
                     <div className={`absolute -right-[23px] top-1 w-2.5 h-2.5 rounded-full ${log.status === 'broken' ? 'bg-red-500' : 'bg-emerald-500'}`} />
-                    
                     <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-1">
                       <div className="flex justify-between font-medium">
-                        <span className="text-slate-800">📍 اللقطة التاريخية للموقع: {log.projectNameSnapshot}</span>
+                        <span className="text-slate-800">📍 الموقع: {log.projectNameSnapshot}</span>
                         <span className={`px-1.5 py-0.5 rounded font-bold ${log.status === 'broken' ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                          {log.status === 'broken' ? 'تحت الإصلاح حالياً' : 'تم الإصلاح'}
+                          {log.status === 'broken' ? 'تحت الإصلاح' : 'تم الإصلاح'}
                         </span>
                       </div>
                       {log.details && <p className="text-slate-600"><span className="text-slate-400">التفاصيل:</span> {log.details}</p>}
                       <p className="text-[11px] text-slate-400">
-                        🗓️ تاريخ التعطل: {new Date(log.breakdownDate).toLocaleString('ar-SA')} 
-                        {log.repairDate && ` | ✅ تاريخ الجاهزية: ${new Date(log.repairDate).toLocaleString('ar-SA')}`}
+                        🗓️ تعطل: {new Date(log.breakdownDate).toLocaleString('ar-SA')} 
+                        {log.repairDate && ` | ✅ جاهزية: ${new Date(log.repairDate).toLocaleString('ar-SA')}`}
                       </p>
                     </div>
                   </div>
