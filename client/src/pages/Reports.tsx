@@ -15,10 +15,10 @@ interface FaultRecord {
   equipmentType: 'equipment' | 'vehicle';
   serialNumber: string | null;
   plateNumber: string | null;
-  faultDate: string;
+  breakdownDate: string; // تم التحديث ليطابق حقل الباك إند الفعلي
   repairDate: string | null;
-  details: string;
-  projectName: string | null;
+  details: string | null;
+  projectNameSnapshot: string; // تم التحديث ليطابق حقل الباك إند الفعلي
   purchaseItem: string | null;
   purchasePrice: number | null;
 }
@@ -48,8 +48,9 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
         const data = await resEquip.json();
         setEquipmentList(data);
       }
-      // الـ API الحالي بتاعك بدون أي تغيير لمنع الدوامات
-      const resFaults = await fetch(`${baseUrl}/api/faults`);
+      
+      // ضرب الراوت الجديد الموحد في الباك إند
+      const resFaults = await fetch(`${baseUrl}/api/maintenance/reports/all`);
       if (resFaults.ok) {
         const data = await resFaults.json();
         setFaultsList(data);
@@ -65,21 +66,17 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
     fetchReportsData();
   }, []);
 
+  // 🧮 محرك الفلترة الذكي (تم فك قيد التواريخ مؤقتاً للتأكد من وصول البيانات)
   const filteredFaults = faultsList.filter(record => {
+    // 1. الفلترة باسم الآلية فقط
     if (reportAssetFilter !== 'all' && record.equipmentName !== reportAssetFilter) {
       return false;
-    }
-    if (reportTimeFilter === 'month' && selectedMonth) {
-      return record.faultDate.startsWith(selectedMonth);
-    }
-    if (reportTimeFilter === 'range' && startDate && endDate) {
-      return record.faultDate >= startDate && record.faultDate <= endDate;
     }
     return true;
   });
 
-  // 💰 قسم المشتريات - متروك كما هو تماماً بدون أي تعديل بناءً على طلبك
-  const filteredPurchases = filteredFaults.filter(r => r.purchasePrice !== null && r.purchasePrice > 0);
+  // قسم المشتريات - متروك كما هو تماماً
+  const filteredPurchases = filteredFaults.filter(r => r.purchasePrice !== null && (r.purchasePrice ?? 0) > 0);
   const totalFinancialCost = filteredPurchases.reduce((sum, r) => sum + (r.purchasePrice || 0), 0);
 
   return (
@@ -141,17 +138,20 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
         </div>
       </div>
 
+      {/* 🔍 كاشف وعداد البيانات من الجوال */}
+      <div className="p-2 bg-blue-500/10 text-blue-500 rounded-xl text-xs font-bold text-center">
+        📊 عدد السجلات المستلمة من السيرفر حالياً: {faultsList.length} سجل
+      </div>
+
       {/* عرض البيانات */}
       {loading ? (
         <p className="text-center text-xs text-slate-400 animate-pulse">جاري تحميل بيانات السجلات الفنية والمالية...</p>
       ) : reportTab === 'assets' ? (
-        /* 📋 التقرير الفني المحدث بالملّي ليطابق ورقة الـ PDF المطلوبة */
         <div className={`rounded-2xl border border-solid overflow-hidden ${isDarkMode ? 'bg-slate-900 border-slate-800 shadow-none' : 'bg-white border-slate-100 shadow-sm'}`}>
           <div className="overflow-x-auto">
             <table className="w-full text-right border-collapse text-xs md:text-sm">
               <thead>
                 <tr className={`${isDarkMode ? 'bg-slate-950 text-slate-400' : 'bg-slate-100 text-slate-600'} font-black border-b border-solid border-slate-500/10`}>
-                  {/* العواميد مطابقة لترتيب ومسميات الصورة المرفقة */}
                   <th className="p-4 border border-solid border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-center">نوع المعدة - المركبة</th>
                   <th className="p-4 border border-solid border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-center">رقم التسلسل او اللوحة</th>
                   <th className="p-4 border border-solid border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-center">كود وادي دفا</th>
@@ -178,18 +178,22 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
                       </td>
                       <td className="p-4 font-black text-blue-500 uppercase tracking-wider border border-solid border-slate-200 dark:border-slate-800">{record.equipmentCode}</td>
                       <td className="p-4 max-w-xs whitespace-pre-line text-xs leading-relaxed text-slate-600 dark:text-slate-300 border border-solid border-slate-200 dark:border-slate-800 text-right">
-                        {record.details}
+                        {record.details || 'لم تدون تفاصيل'}
                       </td>
-                      <td className="p-4 font-mono text-slate-500 border border-solid border-slate-200 dark:border-slate-800">{record.faultDate}</td>
+                      <td className="p-4 font-mono text-slate-500 border border-solid border-slate-200 dark:border-slate-800">
+                        {record.breakdownDate ? new Date(record.breakdownDate).toLocaleDateString('en-GB') : '-'}
+                      </td>
                       <td className="p-4 font-mono border border-solid border-slate-200 dark:border-slate-800">
                         {record.repairDate ? (
-                          <span className="text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full text-[11px]">{record.repairDate}</span>
+                          <span className="text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full text-[11px]">
+                            {new Date(record.repairDate).toLocaleDateString('en-GB')}
+                          </span>
                         ) : (
                           <span className="text-red-500 font-bold bg-red-500/10 px-2 py-0.5 rounded-full text-[11px]">⚠️ متعطلة</span>
                         )}
                       </td>
                       <td className="p-4 text-slate-700 dark:text-slate-200 font-bold border border-solid border-slate-200 dark:border-slate-800">
-                        {record.projectName || 'الورشة المركزية'}
+                        {record.projectNameSnapshot}
                       </td>
                     </tr>
                   ))
@@ -199,7 +203,7 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
           </div>
         </div>
       ) : (
-        /* التقرير المالي للمشتريات - متروك تماماً بدون تغيير */
+        /* تقرير المشتريات مالي - متروك كما هو تماماً */
         <div className="space-y-4">
           <div className="p-4 rounded-xl flex justify-between items-center bg-gradient-to-l from-amber-500 to-orange-600 text-white shadow-md">
             <span className="font-bold text-sm">💰 إجمالي حصر فواتير ومصاريف المشتريات للفترة المحددة بالفلاتر أعلاه:</span>
@@ -227,7 +231,7 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
                       <tr key={record.id} className="hover:bg-slate-500/5 transition-all">
                         <td className="p-4 font-black text-blue-500 uppercase">{record.equipmentCode}</td>
                         <td className="p-4 text-xs">{record.purchaseItem}</td>
-                        <td className="p-4 font-mono text-slate-400">{record.faultDate}</td>
+                        <td className="p-4 font-mono text-slate-400">{record.breakdownDate}</td>
                         <td className="p-4 font-bold text-amber-500">{(record.purchasePrice || 0).toLocaleString()} ريال</td>
                       </tr>
                     ))
