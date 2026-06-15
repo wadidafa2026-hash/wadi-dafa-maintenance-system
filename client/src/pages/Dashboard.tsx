@@ -98,6 +98,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
           <Profile user={user} isDarkMode={isDarkMode} />
         )}
 
+        
       </main>
 
     </div>
