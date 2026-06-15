@@ -16,11 +16,11 @@ interface Equipment {
 }
 
 interface FleetProps {
-  user: { role: 'super_admin' | 'sub_admin' | 'viewer' };
+  userRole: 'super_admin' | 'sub_admin' | 'viewer'; // ✅ تم التعديل لتطابق الـ Dashboard
   isDarkMode: boolean;
 }
 
-export const Fleet: React.FC<FleetProps> = ({ user, isDarkMode }) => {
+export const Fleet: React.FC<FleetProps> = ({ userRole, isDarkMode }) => {
   // ─── حالات التحكم في واجهة العرض الخاصة بالأسطول ─────────────────
   const [fleetTab, setFleetTab] = useState<'equipment' | 'vehicle'>('equipment');
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,8 +45,9 @@ export const Fleet: React.FC<FleetProps> = ({ user, isDarkMode }) => {
   // 🔄 دالة جلب الآليات حياً من الباك إند
   const fetchEquipmentData = async () => {
     setLoading(true);
+    const baseUrl = import.meta.env.VITE_API_URL || ""; 
     try {
-      const resEquip = await fetch('/api/equipment');
+      const resEquip = await fetch(`${baseUrl}/api/equipment`);
       if (resEquip.ok) {
         const data = await resEquip.json();
         setEquipmentList(data);
@@ -67,6 +68,8 @@ export const Fleet: React.FC<FleetProps> = ({ user, isDarkMode }) => {
     e.preventDefault();
     if (!faultEquipment) return;
     
+    const baseUrl = import.meta.env.VITE_API_URL || ""; 
+
     const finalStatus = repairDate ? 'available' : 'broken';
     const payload = {
       equipmentId: faultEquipment.id,
@@ -74,13 +77,13 @@ export const Fleet: React.FC<FleetProps> = ({ user, isDarkMode }) => {
       repairDate: repairDate || null,
       details: faultDetails,
       status: finalStatus,
-      projectName: faultEquipment.projectName, // ضمان سلامة التقارير القديمة
+      projectName: faultEquipment.projectName, 
       purchaseItem: hasPurchases ? purchaseItem : null,
       purchasePrice: hasPurchases ? parseFloat(purchasePrice) : null
     };
 
     try {
-      const response = await fetch('/api/faults', {
+      const response = await fetch(`${baseUrl}/api/faults`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -88,7 +91,7 @@ export const Fleet: React.FC<FleetProps> = ({ user, isDarkMode }) => {
       if (response.ok) {
         setIsFaultModalOpen(false);
         setFaultDetails(''); setFaultDate(''); setRepairDate(''); setHasPurchases(false); setPurchaseItem(''); setPurchasePrice('');
-        fetchEquipmentData(); // تحديث فوري لحالة المعدة في الأسطول
+        fetchEquipmentData(); 
       }
     } catch (err) {
       console.error(err);
@@ -107,7 +110,7 @@ export const Fleet: React.FC<FleetProps> = ({ user, isDarkMode }) => {
       {/* شريط البحث وزر الإضافة */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 bg-slate-500/5 p-4 rounded-xl">
         <input type="text" placeholder={fleetTab === 'equipment' ? "🔍 ابحث عن معدة برقم الكود..." : "🔍 ابحث عن مركبة برقم الكود..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className={`w-full md:max-w-md px-4 py-2.5 rounded-xl border text-sm outline-none focus:border-blue-500 ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-800'}`} />
-        {user.role !== 'viewer' && (
+        {userRole !== 'viewer' && (
           <button onClick={() => setIsAddModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md border-0 cursor-pointer transition-all">
             {fleetTab === 'equipment' ? '➕ إضافة معدة جديدة' : '➕ إضافة مركبة جديدة'}
           </button>
@@ -141,7 +144,7 @@ export const Fleet: React.FC<FleetProps> = ({ user, isDarkMode }) => {
                     <span className="font-bold text-slate-500 dark:text-slate-300">{item.projectName || 'في الورشة الرئيسية'}</span>
                   </div>
                 </div>
-                {user.role !== 'viewer' && (
+                {userRole !== 'viewer' && (
                   <div className="mt-4 pt-3 border-t border-solid border-slate-500/10 flex gap-2 justify-end">
                     <button onClick={(e) => { e.stopPropagation(); setFaultEquipment(item); setIsFaultModalOpen(true); }} className="bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 text-[11px] px-3 py-1.5 rounded-lg font-bold transition-all border-0 cursor-pointer">
                       ⚠️ تعطلت / صيانة
@@ -201,7 +204,7 @@ export const Fleet: React.FC<FleetProps> = ({ user, isDarkMode }) => {
 
       {/* المودالات الملحقة الذكية الأخرى المستدعاة جاهزة */}
       <AddEquipmentModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} type={fleetTab} onSuccess={fetchEquipmentData} isDarkMode={isDarkMode} />
-      <EquipmentProfileModal equipment={selectedEquipment} isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} onRefresh={fetchEquipmentData} userRole={user.role} isDarkMode={isDarkMode} />
+      <EquipmentProfileModal equipment={selectedEquipment} isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} onRefresh={fetchEquipmentData} userRole={userRole} isDarkMode={isDarkMode} />
 
     </div>
   );

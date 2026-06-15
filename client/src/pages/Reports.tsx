@@ -44,13 +44,15 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
   // 🔄 جلب البيانات حياً من الباك إند لتغذية التقارير والفلاتر
   const fetchReportsData = async () => {
     setLoading(true);
+    // 🛡️ جلب رابط السيرفر الأساسي من متغيرات البيئة لمنع تضارب المتصفح
+    const baseUrl = import.meta.env.VITE_API_URL || ""; 
     try {
-      const resEquip = await fetch('/api/equipment');
+      const resEquip = await fetch(`${baseUrl}/api/equipment`);
       if (resEquip.ok) {
         const data = await resEquip.json();
         setEquipmentList(data);
       }
-      const resFaults = await fetch('/api/faults');
+      const resFaults = await fetch(`${baseUrl}/api/faults`);
       if (resFaults.ok) {
         const data = await resFaults.json();
         setFaultsList(data);
@@ -217,7 +219,7 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
                 <thead>
                   <tr className={`${isDarkMode ? 'bg-slate-950 text-slate-400' : 'bg-slate-100 text-slate-600'} font-black border-b border-solid border-slate-500/10`}>
                     <th className="p-4">كود الآلية المشتري لها</th>
-                    <th className="p-4">اسم قطعة الغيار / Mشتري المالي</th>
+                    <th className="p-4">اسم قطعة الغيار / المشتري المالي</th>
                     <th className="p-4">التاريخ المالي للقيد</th>
                     <th className="p-4">التكلفة والمدفوع الإجمالي</th>
                   </tr>

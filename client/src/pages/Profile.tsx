@@ -14,6 +14,9 @@ interface ProfileProps {
 }
 
 export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
+  // 🛡️ جلب رابط السيرفر الأساسي من متغيرات البيئة لمنع تضارب الاتصال
+  const baseUrl = import.meta.env.VITE_API_URL || "";
+
   // ─── حالات تغيير كلمة المرور ───────────────────────────────────
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -31,7 +34,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
   const fetchUsers = async () => {
     if (user.role !== 'super_admin') return;
     try {
-      const res = await fetch('/api/users'); // نقطة الاتصال بالباك إند لجلب النظام
+      const res = await fetch(`${baseUrl}/api/users`); // نقطة الاتصال بالباك إند لجلب النظام
       if (res.ok) {
         const data = await res.json();
         setUsersList(data);
@@ -51,7 +54,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
     setPasswordMsg({ text: '', isError: false });
 
     try {
-      const res = await fetch('/api/auth/change-password', {
+      const res = await fetch(`${baseUrl}/api/auth/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword, newPassword })
@@ -75,7 +78,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
     setAdminMsg('');
 
     try {
-      const res = await fetch('/api/users', {
+      const res = await fetch(`${baseUrl}/api/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
