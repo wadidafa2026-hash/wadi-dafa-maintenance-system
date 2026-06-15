@@ -12,11 +12,12 @@ interface Equipment {
   serialNumber: string | null;
   plateNumber: string | null;
   status: 'available' | 'broken' | 'out_of_service';
-  projectName: string | null;
+  // 🏗️ تحديث الفرونت إند ليطابق الإسكيما: نستقبل اسم المشروع الفعلي القادم من الـ Join في الباك إند
+  projectName: string | null; 
 }
 
 interface FleetProps {
-  userRole: 'super_admin' | 'sub_admin' | 'viewer'; // ✅ تم التعديل لتطابق الـ Dashboard
+  userRole: 'super_admin' | 'sub_admin' | 'viewer'; 
   isDarkMode: boolean;
 }
 
@@ -35,12 +36,10 @@ export const Fleet: React.FC<FleetProps> = ({ userRole, isDarkMode }) => {
   // تسجيل عطل لحظي
   const [isFaultModalOpen, setIsFaultModalOpen] = useState(false);
   const [faultEquipment, setFaultEquipment] = useState<Equipment | null>(null);
-  const [faultDate, setFaultDate] = useState('');
-  const [repairDate, setRepairDate] = useState('');
+  const [breakdownDate, setBreakdownDate] = useState(''); // 🔄 تعديل الاسم ليطابق الباك إند
   const [faultDetails, setFaultDetails] = useState('');
-  const [hasPurchases, setHasPurchases] = useState(false);
-  const [purchaseItem, setPurchaseItem] = useState('');
-  const [purchasePrice, setPurchasePrice] = useState('');
+  const [submittingFault, setSubmittingFault] = useState(false);
+  const [faultError, setFaultError] = useState<string | null>(null);
 
   // 🔄 دالة جلب الآليات حياً من الباك إند
   const fetchEquipmentData = async () => {
@@ -63,38 +62,44 @@ export const Fleet: React.FC<FleetProps> = ({ userRole, isDarkMode }) => {
     fetchEquipmentData();
   }, []);
 
-  // دالة معالجة تسجيل العطل والربط التلقائي بالمشتريات والموقع اللحظي
+  // 🛠️ دالة معالجة تسجيل العطل المربوطة بالباك إند بالملّي
   const handleRegisterFault = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!faultEquipment) return;
     
+    setSubmittingFault(true);
+    setFaultError(null);
+
     const baseUrl = import.meta.env.VITE_API_URL || ""; 
 
-    const finalStatus = repairDate ? 'available' : 'broken';
+    // 📦 تجهيز الـ Payload المظبوط لراوت الـ breakdown
     const payload = {
       equipmentId: faultEquipment.id,
-      faultDate,
-      repairDate: repairDate || null,
-      details: faultDetails,
-      status: finalStatus,
-      projectName: faultEquipment.projectName, 
-      purchaseItem: hasPurchases ? purchaseItem : null,
-      purchasePrice: hasPurchases ? parseFloat(purchasePrice) : null
+      breakdownDate, 
+      details: faultDetails.trim() || null
     };
 
     try {
-      const response = await fetch(`${baseUrl}/api/faults`, {
+      const response = await fetch(`${baseUrl}/api/maintenance/breakdown`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+
       if (response.ok) {
         setIsFaultModalOpen(false);
-        setFaultDetails(''); setFaultDate(''); setRepairDate(''); setHasPurchases(false); setPurchaseItem(''); setPurchasePrice('');
-        fetchEquipmentData(); 
+        setFaultDetails(''); 
+        setBreakdownDate(''); 
+        fetchEquipmentData(); // تحديث كروت الأسطول حياً لتتحول المعدة لـ "تعطلت"
+      } else {
+        const errData = await response.json();
+        setFaultError(errData.error || 'فشل في تسجيل بلاغ العطل، تأكد من البيانات.');
       }
     } catch (err) {
       console.error(err);
+      setFaultError('⚠️ فشل الاتصال بالسيرفر، تحقق من الشبكة.');
+    } finally {
+      setSubmittingFault(false);
     }
   };
 
@@ -156,53 +161,43 @@ export const Fleet: React.FC<FleetProps> = ({ userRole, isDarkMode }) => {
         </div>
       )}
 
-      {/* ⚠️ مودال فتح بلاغ عطل طارئ ومشتريات طارئة */}
+      {/* ⚠️ مودال فتح بلاغ عطل طارئ */}
       {isFaultModalOpen && faultEquipment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <form onSubmit={handleRegisterFault} className={`w-full max-w-md p-6 rounded-2xl border border-solid shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto ${isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-100 text-slate-800'}`}>
             <div>
               <h3 className="text-md font-black text-red-500 m-0">⚠️ فتح بلاغ عطل وصيانة للآلية</h3>
-              <p className="text-xs text-slate-400 m-0 mt-0.5">يرتبط تلقائياً بكود الآلية <span className="text-blue-500 font-bold">{faultEquipment.code}</span> وبالمشروع اللحظي لها <span className="text-amber-500 font-bold">({faultEquipment.projectName || 'الورشة'})</span>.</p>
+              <p className="text-xs text-slate-400 m-0 mt-0.5">يرتبط تلقائياً بكود الآلية <span className="text-blue-500 font-bold">{faultEquipment.code}</span> وسيأخذ لقطة للمشروع الحالي تلقائياً من السيرفر.</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-400 block">تاريخ العطل:</label>
-                <input type="date" required value={faultDate} onChange={(e) => setFaultDate(e.target.value)} className={`w-full px-3 py-1.5 text-xs rounded-xl border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`} />
+            {/* عرض أخطاء الحفظ إن وجدت عشان الزرار ما يحجرش */}
+            {faultError && (
+              <div className="p-3 text-xs font-bold bg-red-500/10 text-red-500 rounded-xl border border-red-500/20">
+                {faultError}
               </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-400 block">تاريخ الاصلاح (اختياري):</label>
-                <input type="date" value={repairDate} onChange={(e) => setRepairDate(e.target.value)} className={`w-full px-3 py-1.5 text-xs rounded-xl border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`} />
-              </div>
+            )}
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-400 block">تاريخ وقوع العطل <span className="text-red-500">*</span>:</label>
+              <input type="date" required value={breakdownDate} onChange={(e) => setBreakdownDate(e.target.value)} className={`w-full px-3 py-1.5 text-xs rounded-xl border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`} />
             </div>
 
             <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-400 block">تفاصيل ووصف العطل:</label>
-              <textarea rows={3} required placeholder="اكتب تفاصيل العطل الفني بكل أريحية ونزول لأسطر جديدة..." value={faultDetails} onChange={(e) => setFaultDetails(e.target.value)} className={`w-full px-3 py-2 text-xs rounded-xl border outline-none resize-y ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`} />
+              <label className="text-[11px] font-bold text-slate-400 block">تفاصيل ووصف العطل الفني:</label>
+              <textarea rows={4} placeholder="اكتب تفاصيل ومظهر العطل هنا..." value={faultDetails} onChange={(e) => setFaultDetails(e.target.value)} className={`w-full px-3 py-2 text-xs rounded-xl border outline-none resize-y ${isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`} />
             </div>
 
-            <div className="p-3 rounded-xl border border-dashed border-slate-500/20 space-y-2 bg-slate-500/5">
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="checkPurchases" checked={hasPurchases} onChange={(e) => setHasPurchases(e.target.checked)} className="rounded cursor-pointer" />
-                <label htmlFor="checkPurchases" className="text-[11px] font-black text-amber-500 cursor-pointer select-none">💰 هل تم شراء قطع غيار أو زيوت؟ (ربط مالي تلقائي)</label>
-              </div>
-              {hasPurchases && (
-                <div className="grid grid-cols-2 gap-2 animate-in fade-in duration-100">
-                  <input type="text" required placeholder="اسم القطعة" value={purchaseItem} onChange={(e) => setPurchaseItem(e.target.value)} className={`w-full px-2 py-1.5 text-xs rounded-lg border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-800'}`} />
-                  <input type="number" required placeholder="السعر بالريال" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} className={`w-full px-2 py-1.5 text-xs rounded-lg border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-800'}`} />
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-3 pt-1 items-center">
-              <button type="button" onClick={() => setIsFaultModalOpen(false)} className="text-xs text-slate-400 bg-transparent border-0 cursor-pointer font-bold">إلغاء</button>
-              <button type="submit" className="bg-red-600 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-md border-0 cursor-pointer hover:bg-red-700">💾 حفظ بلاغ الصيانة والمشتريات</button>
+            <div className="flex justify-end gap-3 pt-2 items-center">
+              <button type="button" onClick={() => { setIsFaultModalOpen(false); setFaultError(null); }} disabled={submittingFault} className="text-xs text-slate-400 bg-transparent border-0 cursor-pointer font-bold">إلغاء</button>
+              <button type="submit" disabled={submittingFault} className="bg-red-600 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md border-0 cursor-pointer hover:bg-red-700 disabled:bg-red-800">
+                {submittingFault ? 'جاري الحفظ حياً...' : '💾 تسجيل العطل في قاعدة البيانات'}
+              </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* المودالات الملحقة الذكية الأخرى المستدعاة جاهزة */}
+      {/* المودالات الملحقة الأخرى */}
       <AddEquipmentModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} type={fleetTab} onSuccess={fetchEquipmentData} isDarkMode={isDarkMode} />
       <EquipmentProfileModal equipment={selectedEquipment} isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} onRefresh={fetchEquipmentData} userRole={userRole} isDarkMode={isDarkMode} />
 
