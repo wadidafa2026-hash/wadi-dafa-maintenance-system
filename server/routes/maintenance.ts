@@ -1,3 +1,4 @@
+// server/routes/maintenance.ts
 import { Router } from 'express';
 import { db } from '../db';
 import { maintenanceLogs, equipment, projects } from '../db/schema';
@@ -113,4 +114,34 @@ router.get('/history/:equipmentId', async (req, res) => {
   }
 });
 
+// 4. جلب تقرير شامل وموحد لجميع الأعطال لصفحة التقارير الفنية (الراوت الجديد والمطابق للجدول الإداري)
+// GET /api/maintenance/reports/all
+router.get('/reports/all', async (req, res) => {
+  try {
+    const records = await db
+      .select({
+        id: maintenanceLogs.id,
+        equipmentId: maintenanceLogs.equipmentId,
+        equipmentCode: equipment.code,
+        equipmentName: equipment.name,
+        equipmentType: equipment.type,
+        serialNumber: equipment.serialNumber,
+        plateNumber: equipment.plateNumber,
+        breakdownDate: maintenanceLogs.breakdownDate,
+        repairDate: maintenanceLogs.repairDate,
+        details: maintenanceLogs.details,
+        projectNameSnapshot: maintenanceLogs.projectNameSnapshot,
+      })
+      .from(maintenanceLogs)
+      .innerJoin(equipment, eq(maintenanceLogs.equipmentId, equipment.id))
+      .orderBy(desc(maintenanceLogs.breakdownDate)); // الترتيب التاريخي من الأحدث للأقدم
+
+    return res.status(200).json(records);
+  } catch (error) {
+    console.error('Error fetching comprehensive report data:', error);
+    return res.status(500).json({ error: 'فشل في توليد بيانات التقارير الموحدة' });
+  }
+});
+
 export default router;
+
