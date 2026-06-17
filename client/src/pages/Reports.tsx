@@ -24,7 +24,7 @@ interface FaultRecord {
 }
 
 interface ReportsProps {
-  isDarkMode: boolean; // متروكة للتوافق البرمجي لكن الواجهة ثابتة على تباين عالي ناصع
+  isDarkMode: boolean;
 }
 
 export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
@@ -116,166 +116,179 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
   const filteredPurchases = filteredFaults.filter(r => r.purchasePrice !== null && (r.purchasePrice ?? 0) > 0);
   const totalFinancialCost = filteredPurchases.reduce((sum, r) => sum + (r.purchasePrice || 0), 0);
 
+  // تنسيقات ذكية بناءً على وضع النظام (داكن أو فاتح) مع الحفاظ على روح الكحلي الملكي
+  const cardBg = isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-md';
+  const textTitle = isDarkMode ? 'text-slate-200' : 'text-slate-800';
+  const textMuted = isDarkMode ? 'text-slate-400' : 'text-slate-600';
+  const inputBg = isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900';
+
   return (
-    <div className="space-y-8 w-full box-border bg-white text-black" dir="rtl">
+    <div className="space-y-6 w-full box-border" dir="rtl">
       
-      {/* ─── تابات التبديل الموحدة: خط ضخم وعريض جداً وسهل التنقل والضغط ─── */}
-      <div className="flex border-b-4 border-solid border-black gap-4 justify-center md:justify-start w-full">
+      {/* ─── التابات: كحلي ملكي فخم يحدد التاب النشط بوضوح ─── */}
+      <div className={`flex border-b gap-4 justify-center md:justify-start w-full ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
         <button 
           onClick={() => setReportTab('assets')} 
-          className={`pb-4 px-6 border-0 bg-transparent cursor-pointer text-lg md:text-xl font-black transition-all ${reportTab === 'assets' ? 'border-b-8 border-solid border-black text-black' : 'text-black/40'}`}
+          className={`pb-3 px-4 border-0 bg-transparent cursor-pointer text-base md:text-lg font-black transition-all ${
+            reportTab === 'assets' 
+              ? 'border-b-4 border-solid border-slate-900 dark:border-blue-500 text-slate-900 dark:text-blue-400' 
+              : 'text-slate-400 hover:text-slate-600'
+          }`}
         >
-          تقرير المعدات والمركبات الفني
+          📋 تقرير المعدات والمركبات الفني
         </button>
         <button 
           onClick={() => setReportTab('purchases')} 
-          className={`pb-4 px-6 border-0 bg-transparent cursor-pointer text-lg md:text-xl font-black transition-all ${reportTab === 'purchases' ? 'border-b-8 border-solid border-black text-black' : 'text-black/40'}`}
+          className={`pb-3 px-4 border-0 bg-transparent cursor-pointer text-base md:text-lg font-black transition-all ${
+            reportTab === 'purchases' 
+              ? 'border-b-4 border-solid border-slate-900 dark:border-blue-500 text-slate-900 dark:text-blue-400' 
+              : 'text-slate-400 hover:text-slate-600'
+          }`}
         >
-          تقرير المشتريات المالي
+          💰 تقرير المشتريات المالي
         </button>
       </div>
 
-      {/* ─── محرك البحث والفلترة: حقول ضخمة وعريضة جداً بتباين عالٍ ─── */}
-      <div className="p-6 bg-white border-4 border-solid border-black space-y-6 no-print">
-        <div className="border-b-2 border-solid border-black pb-2">
-          <h4 className="text-lg md:text-xl font-black text-black m-0">تصفية وفلترة سجلات التقارير حياً:</h4>
+      {/* ─── محرك البحث والفلترة: أنيق ومريح ومحدد المعالم ─── */}
+      <div className={`p-6 border border-solid rounded-2xl space-y-4 no-print ${cardBg}`}>
+        <div className="flex items-center gap-2 pb-2 border-b border-solid border-slate-500/10">
+          <h4 className="text-sm md:text-base font-black text-slate-900 dark:text-blue-400 m-0">⚙️ تصفية وفلترة سجلات التقارير الفورية:</h4>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          <div className="space-y-2">
-            <label className="text-base md:text-lg font-black text-black block">اختيار المعدة أو المركبة:</label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="text-xs font-black text-slate-500 dark:text-slate-400 block">اختيار المعدة أو المركبة:</label>
             <select 
               value={reportAssetFilter} 
               onChange={(e) => setReportAssetFilter(e.target.value)} 
-              className="w-full px-4 py-3.5 rounded-none border-4 border-solid border-black text-base md:text-lg font-black text-black bg-white outline-none"
+              className={`w-full px-3 py-2.5 rounded-xl border text-sm font-bold outline-none shadow-sm ${inputBg}`}
             >
-              <option value="all">عرض جميع المعدات والمركبات المسجلة بالكامل</option>
+              <option value="all">📁 عرض جميع المعدات والمركبات المسجلة</option>
               {equipmentList.map(e => <option key={e.id} value={e.name}>{e.name} ({e.code})</option>)}
             </select>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-base md:text-lg font-black text-black block">النطاق الزمني المحدد:</label>
+          <div className="space-y-1">
+            <label className="text-xs font-black text-slate-500 dark:text-slate-400 block">النطاق الزمني المحدد:</label>
             <select 
               value={reportTimeFilter} 
               onChange={(e) => setReportTimeFilter(e.target.value as any)} 
-              className="w-full px-4 py-3.5 rounded-none border-4 border-solid border-black text-base md:text-lg font-black text-black bg-white outline-none"
+              className={`w-full px-3 py-2.5 rounded-xl border text-sm font-bold outline-none shadow-sm ${inputBg}`}
             >
-              <option value="all">تقرير شامل وعام منذ إطلاق النظام</option>
-              <option value="month">تقرير شهر محدد فريد</option>
-              <option value="range">من تاريخ محدد إلى تاريخ محدد</option>
+              <option value="all">♾️ تقرير شامل وعام منذ إطلاق النظام</option>
+              <option value="month">📅 تقرير شهر محدد فريد</option>
+              <option value="range">⏳ من تاريخ محدد إلى تاريخ محدد</option>
             </select>
           </div>
 
           {reportTimeFilter === 'month' && (
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-base md:text-lg font-black text-black block">حدد الشهر المطلوب:</label>
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-xs font-black text-slate-500 dark:text-slate-400 block">حدد الشهر المطلوب:</label>
               <input 
                 type="month" 
                 value={selectedMonth} 
                 onChange={(e) => setSelectedMonth(e.target.value)} 
-                className="w-full px-4 py-3.5 rounded-none border-4 border-solid border-black text-base md:text-lg font-black text-black bg-white outline-none" 
+                className={`w-full px-3 py-2.5 rounded-xl border text-sm font-bold outline-none ${inputBg}`} 
               />
             </div>
           )}
 
           {reportTimeFilter === 'range' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:col-span-2">
-              <div className="space-y-2">
-                <label className="text-base md:text-lg font-black text-black block">من تاريخ:</label>
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-500 dark:text-slate-400 block">من تاريخ:</label>
                 <input 
                   type="date" 
                   value={startDate} 
                   onChange={(e) => setStartDate(e.target.value)} 
-                  className="w-full px-4 py-3.5 rounded-none border-4 border-solid border-black text-base md:text-lg font-black text-black bg-white outline-none" 
+                  className={`w-full px-3 py-2.5 rounded-xl border text-sm font-bold outline-none ${inputBg}`} 
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-base md:text-lg font-black text-black block">إلى تاريخ:</label>
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-500 dark:text-slate-400 block">إلى تاريخ:</label>
                 <input 
                   type="date" 
                   value={endDate} 
                   onChange={(e) => setEndDate(e.target.value)} 
-                  className="w-full px-4 py-3.5 rounded-none border-4 border-solid border-black text-base md:text-lg font-black text-black bg-white outline-none" 
+                  className={`w-full px-3 py-2.5 rounded-xl border text-sm font-bold outline-none ${inputBg}`} 
                 />
               </div>
             </div>
           )}
         </div>
 
-        <div className="flex justify-end pt-2 border-t-2 border-solid border-black">
+        <div className="flex justify-end pt-2 border-t border-solid border-slate-500/10">
           <button 
             onClick={() => window.print()} 
-            className="w-full sm:w-auto bg-black text-white font-black px-8 py-4 rounded-none text-base md:text-lg border-4 border-solid border-black cursor-pointer hover:bg-black/80 transition-colors"
+            className="w-full sm:w-auto bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-700 text-white font-black px-6 py-2.5 rounded-xl text-sm border-0 cursor-pointer shadow transition-all"
           >
-            طباعة واستخراج هذا التقرير كـ PDF مالي وفني
+            🖨️ طباعة وحفظ التقرير كـ PDF
           </button>
         </div>
       </div>
 
-      {/* عداد حصر فوري مبسط وواضح جداً للرؤية */}
-      <div className="p-4 border-4 border-solid border-black bg-black text-white text-base md:text-lg font-black text-center">
-        إجمالي السجلات الحالية المكتشفة في الفرز: {faultsList.length} سجل معتمد
+      {/* شريط الإحصاء الفوري المريح للعين */}
+      <div className="p-3 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm font-black text-center border border-solid border-blue-500/20">
+        📊 إجمالي السجلات المستلمة من الفرز الحالي: {faultsList.length} سجل معتمد
       </div>
 
-      {/* ─── عرض الجداول والبيانات الفنية والمالية ─── */}
+      {/* ─── كشوفات البيانات والجداول ─── */}
       {loading ? (
-        <p className="text-center text-xl font-black text-black py-12 animate-pulse">جاري جلب ومعالجة سجلات قاعدة البيانات الحالية...</p>
+        <p className={`text-center text-base font-black py-12 animate-pulse ${textMuted}`}>جاري معالجة وفحص سجلات الأسطول حالياً...</p>
       ) : reportTab === 'assets' ? (
         <div className="space-y-4">
           
-          {/* جدول شاشات الكمبيوتر: تباين عالي ونصوص واضحة وعريضة */}
-          <div className="hidden md:block overflow-x-auto border-4 border-solid border-black bg-white">
-            <table className="w-full text-right border-collapse">
+          {/* جدول شاشات الكمبيوتر: تصميم عصري مريح وبلمسة كحلية فخمة للرأس */}
+          <div className={`hidden md:block overflow-x-auto rounded-2xl border border-solid ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <table className="w-full text-right border-collapse text-sm">
               <thead>
-                <tr className="border-b-4 border-solid border-black bg-black text-white text-base font-black">
-                  <th className="p-4 border-l-2 border-solid border-white text-center">التصنيف الرسمي</th>
-                  <th className="p-4 border-l-2 border-solid border-white text-center">البيان (اللوحة / السيريال)</th>
-                  <th className="p-4 border-l-2 border-solid border-white text-center">كود القيد</th>
-                  <th className="p-4 border-l-2 border-solid border-white text-center">تفاصيل ومظاهر العطل</th>
-                  <th className="p-4 border-l-2 border-solid border-white text-center">تاريخ البلاغ</th>
-                  <th className="p-4 border-l-2 border-solid border-white text-center">تاريخ الإصلاح</th>
-                  <th className="p-4 border-l-2 border-solid border-white text-center">الموقع الميداني الموثق</th>
-                  <th className="p-4 text-center no-print">التصحيح</th>
+                <tr className={`${isDarkMode ? 'bg-slate-950 text-slate-300' : 'bg-slate-900 text-white'} font-black`}>
+                  <th className="p-4 border-b border-solid border-slate-500/10 text-center rounded-tr-2xl">نوع الصنف</th>
+                  <th className="p-4 border-b border-solid border-slate-500/10 text-center">البيان الرسمي</th>
+                  <th className="p-4 border-b border-solid border-slate-500/10 text-center">كود القيد</th>
+                  <th className="p-4 border-b border-solid border-slate-500/10 text-center">مظاهر العطل الفني</th>
+                  <th className="p-4 border-b border-solid border-slate-500/10 text-center">تاريخ البلاغ</th>
+                  <th className="p-4 border-b border-solid border-slate-500/10 text-center">حالة الجاهزية</th>
+                  <th className="p-4 border-b border-solid border-slate-500/10 text-center">الموقع الميداني</th>
+                  <th className="p-4 border-b border-solid border-slate-500/10 text-center rounded-tl-2xl no-print">إجراء</th>
                 </tr>
               </thead>
-              <tbody className="text-black font-black text-base divide-y-2 divide-solid divide-black bg-white">
+              <tbody className={`divide-y divide-solid divide-slate-500/10 font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
                 {filteredFaults.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-12 text-center text-black font-black text-lg bg-white">
-                      لا توجد بلاغات صيانة أو أعطال مسجلة تطابق خيارات الفلترة المحددة حالياً.
+                    <td colSpan={8} className="p-12 text-center text-slate-400 font-bold text-sm">
+                      ⚠️ لا توجد بلاغات صيانة أو أعطال مسجلة تطابق خيارات الفلترة المحددة.
                     </td>
                   </tr>
                 ) : (
                   filteredFaults.map((record) => (
-                    <tr key={record.id} className="hover:bg-black/5 text-center transition-colors">
-                      <td className="p-4 border-l border-solid border-black">
-                        {record.equipmentType === 'equipment' ? 'معدة ثقيلة' : 'مركبة'} 
-                        <span className="text-black/70 text-sm block font-bold mt-1">({record.equipmentName})</span>
+                    <tr key={record.id} className="hover:bg-slate-500/5 text-center transition-all">
+                      <td className="p-4">
+                        <span className="font-black">{record.equipmentType === 'equipment' ? '⚙️ معدة ثقيلة' : '🚚 مركبة'}</span>
+                        <span className={`text-xs block mt-0.5 ${textMuted}`}>({record.equipmentName})</span>
                       </td>
-                      <td className="p-4 border-l border-solid border-black text-black font-bold">
-                        {record.equipmentType === 'equipment' ? (record.serialNumber || 'بدون رقم تسلسلي') : (record.plateNumber || 'بدون رقم لوحة')}
+                      <td className="p-4 font-mono">
+                        {record.equipmentType === 'equipment' ? (record.serialNumber || 'بلا سيريال') : (record.plateNumber || 'بلا لوحة')}
                       </td>
-                      <td className="p-4 border-l border-solid border-black text-lg text-black font-black uppercase tracking-wider">{record.equipmentCode}</td>
-                      <td className="p-4 max-w-xs whitespace-pre-line text-sm leading-relaxed text-black border-l border-solid border-black text-right font-bold">
-                        {record.details || 'لم تدون تفاصيل فنية'}
+                      <td className="p-4 font-black text-blue-500 dark:text-blue-400 uppercase tracking-wider">{record.equipmentCode}</td>
+                      <td className="p-4 max-w-xs whitespace-pre-line text-xs leading-relaxed text-right">
+                        {record.details || 'لم تدون تفاصيل'}
                       </td>
-                      <td className="p-4 border-l border-solid border-black text-black">
+                      <td className="p-4 font-mono">
                         {record.breakdownDate ? new Date(record.breakdownDate).toLocaleDateString('en-GB') : '-'}
                       </td>
-                      <td className="p-4 border-l border-solid border-black">
+                      <td className="p-4">
                         {record.repairDate ? (
-                          <span className="inline-block bg-black text-white px-3 py-1 font-black text-xs border border-solid border-black">
-                            تم الإصلاح: {new Date(record.repairDate).toLocaleDateString('en-GB')}
+                          <span className="inline-block bg-emerald-500/10 text-emerald-500 px-2.5 py-1 rounded-full text-xs font-black">
+                            ✓ تم الإصلاح ({new Date(record.repairDate).toLocaleDateString('en-GB')})
                           </span>
                         ) : (
-                          <span className="inline-block bg-white text-black px-3 py-1 font-black text-xs border-2 border-solid border-black">
-                            لا تزال معطلة
+                          <span className="inline-block bg-red-500/10 text-red-500 px-2.5 py-1 rounded-full text-xs font-black">
+                            ⚠️ لا تزال معطلة
                           </span>
                         )}
                       </td>
-                      <td className="p-4 border-l border-solid border-black text-black font-black">
+                      <td className="p-4 text-slate-900 dark:text-slate-100 font-black">
                         {record.projectNameSnapshot}
                       </td>
                       <td className="p-4 no-print">
@@ -287,9 +300,9 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
                             setEditDetails(record.details || '');
                             setIsEditLogModalOpen(true);
                           }}
-                          className="bg-white text-black hover:bg-black hover:text-white text-base px-4 py-2 border-4 border-solid border-black font-black cursor-pointer transition-colors"
+                          className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white text-xs px-3 py-1.5 rounded-lg border-0 cursor-pointer font-black transition-all shadow-sm"
                         >
-                          تعديل
+                          ✏️ تعديل
                         </button>
                       </td>
                     </tr>
@@ -299,25 +312,25 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
             </table>
           </div>
 
-          {/* كروت شاشات الجوال: خطوط ضخمة ومقروءة وحواف حادة جداً */}
+          {/* كروت شاشات الجوال: تصميم مريح مقسم لكتل جذابة وسهلة التصفح */}
           <div className="block md:hidden space-y-4">
             {filteredFaults.map((record) => (
-              <div key={record.id} className="p-5 border-4 border-solid border-black bg-white flex flex-col gap-3">
-                <div className="flex justify-between items-center border-b-2 border-solid border-black pb-2">
-                  <span className="text-xl font-black uppercase text-black tracking-wide">{record.equipmentCode}</span>
-                  <span className={`px-3 py-1 border-2 border-solid border-black text-xs font-black ${record.repairDate ? 'bg-black text-white' : 'bg-white text-black'}`}>
+              <div key={record.id} className={`p-5 border border-solid rounded-2xl flex flex-col gap-3 ${cardBg}`}>
+                <div className="flex justify-between items-center border-b border-solid border-slate-500/10 pb-2">
+                  <span className="text-lg font-black text-blue-500 dark:text-blue-400 uppercase tracking-wide">{record.equipmentCode}</span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-black ${record.repairDate ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
                     {record.repairDate ? 'جاهزة' : 'معطلة'}
                   </span>
                 </div>
-                <div className="space-y-1 text-black">
-                  <p className="text-base font-black m-0">الاسم الرسمي: {record.equipmentName} ({record.equipmentType === 'equipment' ? 'معدة ثقيلة' : 'مركبة'})</p>
-                  <p className="text-sm font-bold m-0">البيان: {record.equipmentType === 'equipment' ? `رقم التسلسل: ${record.serialNumber || 'لا يوجد'}` : `رقم اللوحة: ${record.plateNumber || 'لا يوجد'}`}</p>
-                  <p className="text-sm font-black m-0 pt-1 border-t border-dashed border-black/30">تفاصيل العطل: {record.details || 'لم تدون تفاصيل'}</p>
-                  <p className="text-sm font-bold m-0">تاريخ البلاغ: {record.breakdownDate ? new Date(record.breakdownDate).toLocaleDateString('en-GB') : '-'}</p>
-                  <p className="text-sm font-bold m-0">تاريخ الاصلاح: {record.repairDate ? new Date(record.repairDate).toLocaleDateString('en-GB') : 'خارج الخدمة حتى الان'}</p>
-                  <p className="text-sm font-black m-0">الموقع الميداني الموثق: <span className="underline">{record.projectNameSnapshot}</span></p>
+                <div className={`space-y-1 text-sm font-bold ${textTitle}`}>
+                  <p className="m-0 font-black">الاسم: {record.equipmentName} ({record.equipmentType === 'equipment' ? 'معدة ثقيلة' : 'مركبة'})</p>
+                  <p className="m-0 text-xs">البيان: {record.equipmentType === 'equipment' ? `رقم التسلسل: ${record.serialNumber || 'لا يوجد'}` : `رقم اللوحة: ${record.plateNumber || 'لا يوجد'}`}</p>
+                  <p className="m-0 text-xs pt-2 border-t border-dashed border-slate-500/10">التفاصيل: {record.details || 'لم تدون تفاصيل'}</p>
+                  <p className="m-0 text-xs mt-1">تاريخ البلاغ: {record.breakdownDate ? new Date(record.breakdownDate).toLocaleDateString('en-GB') : '-'}</p>
+                  <p className="m-0 text-xs">تاريخ الاصلاح: {record.repairDate ? new Date(record.repairDate).toLocaleDateString('en-GB') : 'قيد الصيانة الميدانية'}</p>
+                  <p className="m-0 text-xs font-black mt-1">الموقع: <span className="underline text-slate-900 dark:text-slate-200">{record.projectNameSnapshot}</span></p>
                 </div>
-                <div className="pt-3 border-t-2 border-solid border-black flex justify-end no-print">
+                <div className="pt-3 border-t border-solid border-slate-500/10 flex justify-end no-print">
                   <button 
                     onClick={() => {
                       setSelectedLog(record);
@@ -326,9 +339,9 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
                       setEditDetails(record.details || '');
                       setIsEditLogModalOpen(true);
                     }}
-                    className="w-full bg-white text-black text-base py-3 border-4 border-solid border-black font-black cursor-pointer"
+                    className="w-full bg-slate-900 dark:bg-blue-600 text-white text-sm py-2.5 rounded-xl border-0 font-black cursor-pointer shadow"
                   >
-                    تعديل وتصحيح بيانات السجل الفني
+                    ✏️ مراجعة وتصحيح بيانات السجل
                   </button>
                 </div>
               </div>
@@ -337,119 +350,118 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
 
         </div>
       ) : (
-        /* ─── تقرير المشتريات المالي: تباين عالي وحواف حادة دون تدرجات ملونة ─── */
-        <div className="space-y-6">
-          <div className="p-6 border-4 border-solid border-black bg-black text-white flex flex-col sm:flex-row justify-between items-center gap-4">
-            <span className="font-black text-lg md:text-xl">إجمالي كلفة فواتير المشتريات للفترة المحددة:</span>
-            <span className="text-2xl md:text-4xl font-black tracking-wide underline">{totalFinancialCost.toLocaleString()} ريال سعودي</span>
+        /* ─── تقرير المشتريات المالي: لمسات كحلية أنيقة وبطاقة رقمية متميزة ─── */
+        <div className="space-y-4">
+          <div className="p-5 rounded-2xl flex flex-col sm:flex-row justify-between items-center bg-slate-900 text-white dark:bg-blue-950 dark:border dark:border-solid dark:border-blue-900 gap-4 shadow-lg">
+            <span className="font-black text-sm md:text-base">💰 إجمالي حصر فواتير ومصاريف المشتريات للفترة المحددة:</span>
+            <span className="text-xl md:text-2xl font-black text-emerald-400 tracking-wide underline decoration-double">{totalFinancialCost.toLocaleString()} ريال سعودي</span>
           </div>
           
-          <div className="border-4 border-solid border-black bg-white overflow-x-auto">
-            <table className="w-full text-right border-collapse">
-              <thead>
-                <tr className="border-b-4 border-solid border-black bg-black text-white text-base font-black">
-                  <th className="p-4 border-l-2 border-solid border-white">كود القيد المستهدف</th>
-                  <th className="p-4 border-l-2 border-solid border-white">بيان المشتريات وقيد قطعة الغيار</th>
-                  <th className="p-4 border-l-2 border-solid border-white">التاريخ المالي للقيد</th>
-                  <th className="p-4 text-left">التكلفة والمدفوع المالي بالريال</th>
-                </tr>
-              </thead>
-              <tbody className="text-black font-black text-base divide-y-2 divide-solid divide-black bg-white">
-                {filteredPurchases.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="p-12 text-center text-black font-black text-lg bg-white">
-                      لا توجد فواتير أو قيود مشتريات مالية مربوطة بأعطال في هذه الفترة حالياً.
-                    </td>
+          <div className={`rounded-2xl border border-solid overflow-hidden ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-right border-collapse text-sm">
+                <thead>
+                  <tr className={`${isDarkMode ? 'bg-slate-950 text-slate-300' : 'bg-slate-900 text-white'} font-black`}>
+                    <th className="p-4">كود القيد</th>
+                    <th className="p-4">قطعة الغيار / البيان المالي</th>
+                    <th className="p-4">التاريخ المالي للقيد</th>
+                    <th className="p-4 text-left">التكلفة والمدفوع الإجمالي</th>
                   </tr>
-                ) : (
-                  filteredPurchases.map((record) => (
-                    <tr key={record.id} className="hover:bg-black/5 transition-colors">
-                      <td className="p-4 font-black text-lg text-black uppercase tracking-wider">{record.equipmentCode}</td>
-                      <td className="p-4 text-black font-bold">{record.purchaseItem}</td>
-                      <td className="p-4 text-black">{record.breakdownDate}</td>
-                      <td className="p-4 font-black text-black text-left">{parseInt(record.purchasePrice?.toString() || '0').toLocaleString()} ريال</td>
+                </thead>
+                <tbody className={`divide-y divide-solid divide-slate-500/10 font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
+                  {filteredPurchases.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="p-8 text-center text-slate-400 text-xs">💸 لا توجد فواتير مشتريات مربوطة بأعطال في هذه الفترة حالياً.</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filteredPurchases.map((record) => (
+                      <tr key={record.id} className="hover:bg-slate-500/5 transition-all">
+                        <td className="p-4 font-black text-blue-500 dark:text-blue-400 uppercase">{record.equipmentCode}</td>
+                        <td className="p-4 text-xs md:text-sm">{record.purchaseItem}</td>
+                        <td className="p-4 font-mono text-slate-500 dark:text-slate-400">{record.breakdownDate}</td>
+                        <td className="p-4 font-black text-emerald-600 dark:text-emerald-400 text-left">{parseInt(record.purchasePrice?.toString() || '0').toLocaleString()} ريال</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
-      {/* ─── المودال المنبثق للتعديل والتصحيح: حجم عملاق وحقول ضخمة للعين ─── */}
+      {/* ─── المودال المنبثق للتعديل والتصحيح: عصري وأنيق وحقوله واضحة وكبيرة ─── */}
       {isEditLogModalOpen && selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" dir="rtl">
-          <div className="w-full max-w-2xl p-8 bg-white border-4 border-solid border-black text-black rounded-none shadow-none max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" dir="rtl">
+          <div className={`w-full max-w-lg p-6 rounded-2xl border shadow-2xl relative ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-800'}`}>
             
-            <div className="border-b-4 border-solid border-black pb-4 mb-6">
-              <h3 className="text-2xl md:text-3xl font-black text-black m-0">مراجعة وتصحيح سجل الصيانة</h3>
-              <p className="text-base font-bold text-black mt-2">كود القيد: <span className="underline font-black">{selectedLog.equipmentCode}</span> | الموقع الميداني: {selectedLog.projectNameSnapshot}</p>
+            <div className="mb-4 pb-3 border-b border-solid border-slate-500/10">
+              <h3 className="text-lg md:text-xl font-black text-slate-900 dark:text-blue-400 m-0">✏️ مراجعة وتصحيح سجل صيانة</h3>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">المعدة: <span className="font-black text-blue-500">{selectedLog.equipmentCode}</span> | الموقع الموثق: {selectedLog.projectNameSnapshot}</p>
             </div>
             
             {logError && (
-              <div className="p-4 mb-6 text-base font-black bg-black text-white border-4 border-solid border-black">
-                خطأ من السيرفر: {logError}
+              <div className="p-3 mb-4 text-xs font-bold bg-red-500/10 text-red-500 rounded-xl border border-solid border-red-500/20">
+                ⚠️ خطأ: {logError}
               </div>
             )}
             
-            <form onSubmit={handleUpdateLogSubmit} className="space-y-6">
-              
-              <div className="space-y-2">
-                <label className="text-base md:text-lg font-black text-black block">تاريخ حدوث ووقوع العطل الفعلي:</label>
+            <form onSubmit={handleUpdateLogSubmit} className="space-y-4 text-sm">
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-500 dark:text-slate-400">تاريخ وقوع العطل الفعلي:</label>
                 <input 
                   type="date" 
                   required 
                   value={editBreakdownDate} 
                   onChange={(e) => setEditBreakdownDate(e.target.value)} 
-                  className="w-full px-4 py-3.5 text-base md:text-lg font-black rounded-none border-4 border-solid border-black outline-none bg-white text-black" 
+                  className={`w-full px-3 py-2 rounded-xl border text-sm font-bold outline-none ${inputBg}`} 
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-base md:text-lg font-black text-black block">تاريخ الإصلاح وإعلان الجاهزية (امسحه إذا كانت لا تزال معطلة):</label>
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-500 dark:text-slate-400">تاريخ الإصلاح والجاهزية (اتركه فارغاً إذا لم تُصلح بعد):</label>
                 <input 
                   type="date" 
                   value={editRepairDate} 
                   onChange={(e) => setEditRepairDate(e.target.value)} 
-                  className="w-full px-4 py-3.5 text-base md:text-lg font-black rounded-none border-4 border-solid border-black outline-none bg-white text-black" 
+                  className={`w-full px-3 py-2 rounded-xl border text-sm font-bold outline-none ${inputBg}`} 
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-base md:text-lg font-black text-black block">تعديل وكتابة البيان والملاحظات الفنية للمشكلة بالكامل:</label>
+              <div className="space-y-1">
+                <label className="text-xs font-black text-slate-500 dark:text-slate-400">تعديل البيان الفني وملاحظات المشكلة:</label>
                 <textarea 
-                  rows={4} 
+                  rows={3} 
                   value={editDetails} 
                   onChange={(e) => setEditDetails(e.target.value)} 
-                  placeholder="تعديل تفاصيل العطل الفني..." 
-                  className="w-full px-4 py-3.5 text-base md:text-lg font-black rounded-none border-4 border-solid border-black outline-none resize-none bg-white text-black" 
+                  placeholder="اكتب تفاصيل العطل هنا..." 
+                  className={`w-full px-3 py-2 rounded-xl border text-sm font-bold outline-none resize-none ${inputBg}`} 
                 />
               </div>
 
-              <div className="flex flex-col sm:flex-row justify-end gap-4 pt-4 border-t-4 border-solid border-black">
+              <div className="flex justify-end gap-3 pt-3 border-t border-solid border-slate-500/10">
                 <button 
                   type="button" 
                   onClick={() => setIsEditLogModalOpen(false)} 
-                  className="w-full sm:w-auto text-base md:text-lg font-black text-black bg-white border-4 border-solid border-black px-6 py-3 cursor-pointer hover:bg-black hover:text-white transition-colors"
+                  className="text-xs font-black text-slate-400 bg-transparent border-0 cursor-pointer hover:text-slate-600"
                 >
-                  إلغاء الأمر وإغلاق النافذة
+                  إلغاء
                 </button>
                 <button 
                   type="submit" 
                   disabled={updatingLog} 
-                  className="w-full sm:w-auto bg-black text-white font-black text-base md:text-lg px-8 py-3 border-4 border-solid border-black cursor-pointer disabled:opacity-50"
+                  className="bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-700 text-white font-black text-xs px-5 py-2 rounded-xl border-0 cursor-pointer shadow transition-all"
                 >
-                  {updatingLog ? 'جاري حفظ التعديلات...' : 'اعتماد وحفظ التعديل النهائي'}
+                  {updatingLog ? 'جاري الحفظ...' : '💾 حفظ التعديلات'}
                 </button>
               </div>
-
             </form>
+
           </div>
         </div>
       )}
 
-      {/* كود التنسيق الخاص بالطباعة لإخفاء العناصر غير المطلوبة تلقائياً */}
+      {/* كود التنسيق الخاص بالطباعة */}
       <style>{`
         @media print {
           .no-print, button, select, input {
