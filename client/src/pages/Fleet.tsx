@@ -12,8 +12,11 @@ interface Equipment {
   serialNumber: string | null;
   plateNumber: string | null;
   status: 'available' | 'broken' | 'out_of_service';
+  currentProjectId?: number | null;
   projectName: string | null;
-  imageUrl?: string | null; // إضافة رابط الصورة إن وجد
+  frontImageUrl?: string | null;
+  backImageUrl?: string | null;
+  codeImageUrl?: string | null;
 }
 
 interface FleetProps {
@@ -146,16 +149,14 @@ export const Fleet: React.FC<FleetProps> = ({ userRole, isDarkMode }) => {
     }
   };
 
-  // تصفية العناصر بناءً على التاب والبحث
   const filteredList = equipmentList.filter(
     item => item.type === fleetTab && item.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // الفصل التام بناءً على رغبتك: قائمة المعطلات وقائمة السليمات
+  // الترتيب والفصل: المعطلات تماماً في الأعلى تليها الآليات السليمة
   const brokenItems = filteredList.filter(item => item.status !== 'available');
   const availableItems = filteredList.filter(item => item.status === 'available');
 
-  // مكوّن فرعي داخلي لعرض الجدول لتقليل تكرار الكود ومتوافق مع الجوال
   const RenderGroupTable = ({ items, title, isAlertGroup }: { items: Equipment[], title: string, isAlertGroup: boolean }) => {
     if (items.length === 0) return null;
     return (
@@ -164,7 +165,7 @@ export const Fleet: React.FC<FleetProps> = ({ userRole, isDarkMode }) => {
           {title} ({items.length})
         </h4>
         
-        {/* عرض جدول للشاشات الكبيرة */}
+        {/* العرض للشاشات الكبيرة */}
         <div className={`hidden md:block overflow-x-auto rounded-xl border-2 ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white shadow-sm'}`}>
           <table className="w-full text-right border-collapse">
             <thead>
@@ -212,7 +213,7 @@ export const Fleet: React.FC<FleetProps> = ({ userRole, isDarkMode }) => {
           </table>
         </div>
 
-        {/* عرض كروت مرنة ومريحة ومضمونة 100% للجوالات لعدم تمدد الشاشة */}
+        {/* كروت مرنة ومتوافقة 100% مع الجوال لمنع تمدد الشاشة */}
         <div className="block md:hidden space-y-3">
           {items.map((item) => (
             <div 
@@ -284,7 +285,7 @@ export const Fleet: React.FC<FleetProps> = ({ userRole, isDarkMode }) => {
         )}
       </div>
 
-      {/* قوائم العرض المفصولة تماماً */}
+      {/* القوائم المفصولة تماماً */}
       {loading ? (
         <p className="text-center text-sm font-bold text-slate-500 animate-pulse py-6">جاري التحميل...</p>
       ) : (
@@ -295,7 +296,7 @@ export const Fleet: React.FC<FleetProps> = ({ userRole, isDarkMode }) => {
         </div>
       )}
 
-      {/* المودالات */}
+      {/* المودالات الملحقة */}
       <AddEquipmentModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} type={fleetTab} onSuccess={fetchEquipmentData} isDarkMode={isDarkMode} />
       
       {isProfileModalOpen && selectedEquipment && (
