@@ -21,7 +21,7 @@ interface Equipment {
 
 interface FleetProps {
   userRole: 'super_admin' | 'sub_admin' | 'viewer'; 
-  isDarkMode: boolean; // متروكة للتوافق البرمجي لكن الواجهة ثابتة على تباين عالي ناصع
+  isDarkMode: boolean;
 }
 
 export const Fleet: React.FC<FleetProps> = ({ userRole, isDarkMode }) => {
@@ -159,65 +159,67 @@ export const Fleet: React.FC<FleetProps> = ({ userRole, isDarkMode }) => {
   const RenderGroupTable = ({ items, title, isAlertGroup }: { items: Equipment[], title: string, isAlertGroup: boolean }) => {
     if (items.length === 0) return null;
     return (
-      <div className="space-y-4 pt-4">
-        <div className={`p-4 border-4 border-solid border-black ${isAlertGroup ? 'bg-black text-white' : 'bg-white text-black'}`}>
-          <h4 className="text-xl md:text-2xl font-black m-0 uppercase tracking-wide">
-            {title} (العدد الإجمالي: {items.length})
-          </h4>
-        </div>
+      <div className="space-y-3 pt-2">
+        <h4 className={`text-base md:text-lg font-black px-1 flex items-center gap-2 ${isAlertGroup ? 'text-red-600 animate-pulse' : 'text-emerald-600'}`}>
+          {title} ({items.length})
+        </h4>
         
-        {/* العرض للشاشات الكبيرة (الكمبيوتر وعبر الأسطر) - تباين كامل حاد */}
-        <div className="hidden md:block overflow-x-auto border-4 border-solid border-black bg-white">
+        {/* العرض للشاشات الكبيرة (الكمبيوتر وعبر الأسطر) */}
+        <div className={`hidden md:block overflow-x-auto rounded-xl border-2 ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white shadow-sm'}`}>
           <table className="w-full text-right border-collapse">
             <thead>
-              <tr className="border-b-4 border-solid border-black bg-black text-white text-base font-black">
-                <th className="p-4 border-l-2 border-solid border-white">كود القيد الموحد</th>
-                <th className="p-4 border-l-2 border-solid border-white">الاسم الرسمي</th>
-                <th className="p-4 border-l-2 border-solid border-white">البيان الفني الرسمي</th>
-                <th className="p-4 border-l-2 border-solid border-white">الموقع والمشروع الحالي</th>
-                <th className="p-4 border-l-2 border-solid border-white text-center">الحالة التشغيلية</th>
-                {userRole !== 'viewer' && <th className="p-4 text-left">الإجراءات والعمليات</th>}
+              <tr className={`border-b ${isDarkMode ? 'bg-slate-950 text-slate-400 border-slate-800' : 'bg-slate-50 text-slate-600 border-slate-200'} text-xs md:text-sm font-black`}>
+                <th className="p-3">كود الآلية</th>
+                <th className="p-3">اسم المعدة / المركبة</th>
+                <th className="p-3">البيان (اللوحة / السيريال)</th>
+                <th className="p-3">الموقع/المشروع الميداني</th>
+                <th className="p-3 text-center">الحالة</th>
+                {userRole !== 'viewer' && <th className="p-3 text-left">الإجراءات</th>}
               </tr>
             </thead>
-            <tbody className="text-black font-black text-base divide-y-2 divide-solid divide-black">
+            <tbody>
               {items.map((item) => (
                 <tr 
                   key={item.id} 
                   onClick={() => { setSelectedEquipment(item); setIsProfileModalOpen(true); }}
-                  className={`cursor-pointer transition-colors hover:bg-black/5 ${isAlertGroup ? 'bg-red-100/50' : 'bg-white'}`}
+                  className={`cursor-pointer border-b text-sm font-bold transition-all ${
+                    isAlertGroup 
+                      ? (isDarkMode ? 'bg-red-950/30 border-red-900/50 text-red-200 hover:bg-red-950/50' : 'bg-red-50 border-red-100 text-red-950 hover:bg-red-100/50') 
+                      : (isDarkMode ? 'border-slate-800 text-slate-200 hover:bg-slate-800/50' : 'border-slate-200 text-slate-900 hover:bg-slate-50')
+                  }`}
                 >
-                  <td className="p-4 border-l border-solid border-black text-lg text-black font-black tracking-wider uppercase">{item.code}</td>
-                  <td className="p-4 border-l border-solid border-black text-black">{item.name}</td>
-                  <td className="p-4 border-l border-solid border-black text-black">
-                    {item.type === 'equipment' ? `رقم التسلسل: ${item.serialNumber || 'غير مسجل'}` : `رقم اللوحة: ${item.plateNumber || 'غير مسجل'}`}
-                  </td>
-                  <td className="p-4 border-l border-solid border-black text-black font-bold">{item.projectName || 'الورشة المركزية'}</td>
-                  <td className="p-4 border-l border-solid border-black text-center">
-                    <span className={`inline-block px-4 py-1 border-2 border-solid border-black font-black text-sm ${isAlertGroup ? 'bg-black text-white' : 'bg-white text-black'}`}>
-                      {isAlertGroup ? 'معطلة وخارج الخدمة' : 'جاهز للعمل الميداني'}
+                  <td className="p-3 font-black uppercase text-blue-700 dark:text-blue-400">{item.code}</td>
+                  <td className="p-3 font-black">{item.name}</td>
+                  <td className="p-3 text-xs font-sans">{item.type === 'equipment' ? `S/N: ${item.serialNumber || '---'}` : `لوحة: ${item.plateNumber || '---'}`}</td>
+                  <td className="p-3 text-xs opacity-90">{item.projectName || 'الورشة المركزية'}</td>
+                  <td className="p-3 text-center">
+                    <span className={`inline-block px-2.5 py-0.5 rounded-lg text-xs font-black ${isAlertGroup ? 'bg-red-600 text-white' : 'bg-emerald-200 text-emerald-950 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
+                      {isAlertGroup ? 'معطلة' : 'جاهز'}
                     </span>
                   </td>
                   {userRole !== 'viewer' && (
-                    <td className="p-4 text-left" onClick={(e) => e.stopPropagation()}>
+                    <td className="p-3 text-left">
                       {isAlertGroup ? (
                         <button 
-                          onClick={() => { 
+                          onClick={(e) => { 
+                            e.stopPropagation(); // 🛡️ منع فتح البروفايل فوراً
                             setRepairEquipment(item); 
                             setIsRepairModalOpen(true); 
                           }} 
-                          className="bg-white hover:bg-black hover:text-white text-black text-base px-5 py-2.5 border-4 border-solid border-black font-black cursor-pointer transition-colors"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg font-black border-0 cursor-pointer shadow-md"
                         >
-                          إعلان جاهزية وإصلاح
+                          إصلاح وجاهزية 🟢
                         </button>
                       ) : (
                         <button 
-                          onClick={() => { 
+                          onClick={(e) => { 
+                            e.stopPropagation(); // 🛡️ منع فتح البروفايل فوراً
                             setFaultEquipment(item); 
                             setIsFaultModalOpen(true); 
                           }} 
-                          className="bg-black text-white text-base px-5 py-2.5 border-4 border-solid border-black font-black cursor-pointer transition-colors"
+                          className="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-lg font-black border-0 cursor-pointer shadow-md"
                         >
-                          تسجيل بلاغ عطل فني
+                          تسجيل عطل 🔴
                         </button>
                       )}
                     </td>
@@ -228,50 +230,56 @@ export const Fleet: React.FC<FleetProps> = ({ userRole, isDarkMode }) => {
           </table>
         </div>
 
-        {/* كروت مرنة ومتوافقة للجوال - نصوص سوداء حادة وحقول ضخمة لقراءة سهلة */}
-        <div className="block md:hidden space-y-4">
+        {/* كروت مرنة ومتوافقة للجوال */}
+        <div className="block md:hidden space-y-3">
           {items.map((item) => (
             <div 
               key={item.id}
               onClick={() => { setSelectedEquipment(item); setIsProfileModalOpen(true); }}
-              className={`p-5 border-4 border-solid border-black flex flex-col gap-3 bg-white ${isAlertGroup ? 'bg-red-50' : 'bg-white'}`}
+              className={`p-4 rounded-xl border-2 flex flex-col gap-2 shadow-sm ${
+                isAlertGroup 
+                  ? (isDarkMode ? 'bg-red-950/30 border-red-900 text-red-200' : 'bg-red-50 border-red-200 text-red-950') 
+                  : (isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-900')
+              }`}
             >
-              <div className="flex justify-between items-center border-b-2 border-solid border-black pb-2">
-                <span className="text-xl font-black uppercase text-black tracking-wide">{item.code}</span>
-                <span className={`px-3 py-1 border-2 border-solid border-black text-xs font-black ${isAlertGroup ? 'bg-black text-white' : 'bg-white text-black'}`}>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-black uppercase text-blue-700 dark:text-blue-400">{item.code}</span>
+                <span className={`px-2 py-0.5 rounded text-xs font-black ${isAlertGroup ? 'bg-red-600 text-white' : 'bg-emerald-200 text-emerald-950'}`}>
                   {isAlertGroup ? 'معطلة' : 'جاهز'}
                 </span>
               </div>
-              <div className="space-y-1">
-                <h5 className="text-lg font-black m-0 text-black">{item.name}</h5>
-                <p className="text-sm font-bold m-0 text-black">
-                  {item.type === 'equipment' ? `رقم التسلسل: ${item.serialNumber || 'لا يوجد'}` : `رقم اللوحة: ${item.plateNumber || 'لا يوجد'}`}
+              <div>
+                <h5 className="text-sm font-black m-0">{item.name}</h5>
+                <p className="text-xs m-0 mt-1 opacity-75 font-sans">
+                  {item.type === 'equipment' ? `S/N: ${item.serialNumber || 'لا يوجد'}` : `لوحة: ${item.plateNumber || 'لا يوجد'}`}
                 </p>
-                <p className="text-sm font-black m-0 text-black pt-1">
-                  الموقع: <span className="underline">{item.projectName || 'الورشة المركزية'}</span>
+                <p className="text-xs m-0 mt-1.5 font-bold">
+                  الموقع: <span className="text-blue-800 dark:text-blue-300 font-black">{item.projectName || 'الورشة المركزية'}</span>
                 </p>
               </div>
               {userRole !== 'viewer' && (
-                <div className="pt-3 border-t-2 border-solid border-black flex justify-end" onClick={(e) => e.stopPropagation()}>
+                <div className="pt-2 border-t border-solid border-slate-300/30 flex justify-end">
                   {isAlertGroup ? (
                     <button 
-                      onClick={() => { 
+                      onClick={(e) => { 
+                        e.stopPropagation(); // 🛡️ منع فتح البروفايل فوراً
                         setRepairEquipment(item); 
                         setIsRepairModalOpen(true); 
                       }} 
-                      className="w-full bg-white text-black text-base py-3 border-4 border-solid border-black font-black cursor-pointer"
+                      className="w-full bg-emerald-600 text-white text-xs py-2 rounded-lg font-black border-0 cursor-pointer"
                     >
-                      إعلان جاهزية وإصلاح للمعدة
+                      إصلاح وإعادة الخدمة 🟢
                     </button>
                   ) : (
                     <button 
-                      onClick={() => { 
+                      onClick={(e) => { 
+                        e.stopPropagation(); // 🛡️ منع فتح البروفايل فوراً
                         setFaultEquipment(item); 
                         setIsFaultModalOpen(true); 
                       }} 
-                      className="w-full bg-black text-white text-base py-3 border-4 border-solid border-black font-black cursor-pointer"
+                      className="w-full bg-red-600 text-white text-xs py-2 rounded-lg font-black border-0 cursor-pointer"
                     >
-                      تسجيل بلاغ عطل فني فوري
+                      تسجيل بلاغ عطل 🔴
                     </button>
                   )}
                 </div>
@@ -284,59 +292,44 @@ export const Fleet: React.FC<FleetProps> = ({ userRole, isDarkMode }) => {
   };
 
   return (
-    <div className="space-y-8 w-full box-border bg-white text-black" dir="rtl">
+    <div className="space-y-6 w-full box-border" dir="rtl">
       
-      {/* تابات الاختيار والتبديل الموحدة - نصوص صريحة بدون أيقونات */}
-      <div className="flex border-b-4 border-solid border-black gap-4 justify-center md:justify-start w-full">
-        <button 
-          onClick={() => setFleetTab('equipment')} 
-          className={`pb-4 px-6 border-0 bg-transparent cursor-pointer text-lg md:text-xl font-black transition-all ${fleetTab === 'equipment' ? 'border-b-8 border-solid border-black text-black' : 'text-black/40'}`}
-        >
-          قسم المعدات الثقيلة
+      <div className="flex border-b-2 border-slate-200 dark:border-slate-800 gap-6 justify-center md:justify-start">
+        <button onClick={() => setFleetTab('equipment')} className={`pb-3 border-0 bg-transparent cursor-pointer text-base font-bold ${fleetTab === 'equipment' ? 'border-b-4 border-solid border-blue-800 text-blue-800 font-black' : 'text-slate-500'}`}>
+          💡 قسم المعدات الثقيلة
         </button>
-        <button 
-          onClick={() => setFleetTab('vehicle')} 
-          className={`pb-4 px-6 border-0 bg-transparent cursor-pointer text-lg md:text-xl font-black transition-all ${fleetTab === 'vehicle' ? 'border-b-8 border-solid border-black text-black' : 'text-black/40'}`}
-        >
-          قسم المركبات
+        <button onClick={() => setFleetTab('vehicle')} className={`pb-3 border-0 bg-transparent cursor-pointer text-base font-bold ${fleetTab === 'vehicle' ? 'border-b-4 border-solid border-blue-800 text-blue-800 font-black' : 'text-slate-500'}`}>
+          🚚 قسم المركبات والسيارات
         </button>
       </div>
 
-      {/* محرك البحث والفلترة وإضافة البيانات - حقول ضخمة ومقروءة جداً */}
-      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-stretch gap-4 bg-white p-6 border-4 border-solid border-black">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border-2 border-blue-100 dark:border-slate-800">
         <input 
           type="text" 
-          placeholder="ابحث بإدخال كود القيد الموحد هنا..." 
+          placeholder="البحث بإدخل رقم الكود الموحد..." 
           value={searchQuery} 
           onChange={(e) => setSearchQuery(e.target.value)} 
-          className="w-full lg:max-w-2xl px-5 py-4 rounded-none border-4 border-solid border-black text-base md:text-lg font-black text-black outline-none placeholder-black/50 bg-white" 
+          className={`w-full md:max-w-xl px-4 py-2.5 rounded-xl border-2 text-sm font-bold outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-white border-slate-300'}`} 
         />
         {userRole !== 'viewer' && (
-          <button 
-            onClick={() => setIsAddModalOpen(true)} 
-            className="w-full lg:w-auto bg-black hover:bg-black/80 text-white font-black px-8 py-4 rounded-none text-base md:text-lg border-4 border-solid border-black cursor-pointer transition-colors"
-          >
-            {fleetTab === 'equipment' ? 'إضافة معدة جديدة للأسطول' : 'إضافة مركبة جديدة للأسطول'}
+          <button onClick={() => setIsAddModalOpen(true)} className="w-full md:w-auto bg-blue-800 hover:bg-blue-900 text-white font-black px-4 py-2.5 rounded-xl text-sm border-0 cursor-pointer">
+            {fleetTab === 'equipment' ? 'إضافة معدة جديدة' : 'إضافة مركبة جديدة'}
           </button>
         )}
       </div>
 
       {loading ? (
-        <p className="text-center text-xl font-black text-black py-12 animate-pulse">جاري جلب تحديثات قاعدة البيانات حالياً...</p>
+        <p className="text-center text-sm font-bold text-slate-500 animate-pulse py-6">جاري التحميل...</p>
       ) : (
-        <div className="space-y-12 w-full">
-          <RenderGroupTable items={brokenItems} title="كشف البلاغات الحالية: معدات ومركبات معطلة" isAlertGroup={true} />
-          <RenderGroupTable items={availableItems} title="كشف الحصر الحالي: معدات ومركبات تعمل بكفاءة" isAlertGroup={false} />
-          {filteredList.length === 0 && (
-            <div className="text-center p-12 border-4 border-dashed border-black">
-              <p className="text-lg font-black text-black m-0">لا توجد نتائج مطابقة لرمز الكود المدخل في البحث.</p>
-            </div>
-          )}
+        <div className="space-y-8 w-full">
+          <RenderGroupTable items={brokenItems} title="🚨 آليات ومركبات معطلة حالياً" isAlertGroup={true} />
+          <RenderGroupTable items={availableItems} title="✅ آليات ومركبات تعمل بكفاءة" isAlertGroup={false} />
+          {filteredList.length === 0 && <p className="text-center text-slate-500 py-6 font-bold text-sm">لا توجد نتائج تطابق البحث.</p>}
         </div>
       )}
 
-      {/* 🛠️ المودالات الفرعية المحدثة - الحجم كبير، مريح جداً، والحقول ضخمة للرؤية */}
-      <AddEquipmentModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} type={fleetTab} onSuccess={fetchEquipmentData} isDarkMode={false} />
+      {/* 🛠️ المودالات الفرعية المنبثقة للأعطال والإصلاح */}
+      <AddEquipmentModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} type={fleetTab} onSuccess={fetchEquipmentData} isDarkMode={isDarkMode} />
       
       {isProfileModalOpen && selectedEquipment && (
         <EquipmentProfileModal 
@@ -345,118 +338,51 @@ export const Fleet: React.FC<FleetProps> = ({ userRole, isDarkMode }) => {
           onClose={() => setIsProfileModalOpen(false)} 
           onRefresh={fetchEquipmentData} 
           userRole={userRole} 
-          isDarkMode={false} 
+          isDarkMode={isDarkMode} 
         />
       )}
 
-      {/* 🔴 مودال تسجيل العطل - حجم عملاق وحقول ضخمة مريحة للعين والنظر لضعاف النظر */}
+      {/* 🔴 مودال تسجيل العطل */}
       {isFaultModalOpen && faultEquipment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-2xl p-8 bg-white border-4 border-solid border-black text-black rounded-none shadow-none max-h-[90vh] overflow-y-auto" dir="rtl">
-            
-            <div className="border-b-4 border-solid border-black pb-4 mb-6">
-              <h3 className="text-2xl md:text-3xl font-black text-black m-0">تسجيل بلاغ عطل فني</h3>
-              <p className="text-base font-bold text-black mt-2">كود القيد المستهدف: <span className="underline font-black">{faultEquipment.code}</span> | الاسم: {faultEquipment.name}</p>
-            </div>
-
-            {faultError && (
-              <div className="p-4 mb-6 text-base font-black bg-black text-white border-4 border-solid border-black">
-                خطأ من السيرفر: {faultError}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className={`w-full max-w-md p-6 rounded-2xl border shadow-2xl ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-100 text-slate-800'}`}>
+            <h3 className="text-lg font-black text-red-600 mb-2">🔴 تسجيل بلاغ عطل للآلية ({faultEquipment.code})</h3>
+            {faultError && <div className="p-3 mb-4 text-xs font-bold bg-red-500/10 text-red-500 rounded-xl">{faultError}</div>}
+            <form onSubmit={handleRegisterFault} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-400">تاريخ حدوث العطل:</label>
+                <input type="date" required value={breakdownDate} onChange={(e) => setBreakdownDate(e.target.value)} className={`w-full px-3 py-2 text-sm rounded-xl border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`} />
               </div>
-            )}
-
-            <form onSubmit={handleRegisterFault} className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-base md:text-lg font-black text-black block">تاريخ رصد وحدوث العطل الميداني:</label>
-                <input 
-                  type="date" 
-                  required 
-                  value={breakdownDate} 
-                  onChange={(e) => setBreakdownDate(e.target.value)} 
-                  className="w-full px-4 py-3.5 text-base md:text-lg font-black rounded-none border-4 border-solid border-black outline-none bg-white text-black" 
-                />
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-400">تفاصيل ومظاهر العطل الفني بالميدان:</label>
+                <textarea rows={3} placeholder="اكتب هنا وش المشكلة بالظبط... (مثال: خلط زيت، كسر في الجنزير)" value={faultDetails} onChange={(e) => setFaultDetails(e.target.value)} className={`w-full px-3 py-2 text-sm rounded-xl border outline-none resize-none ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`} />
               </div>
-
-              <div className="space-y-2">
-                <label className="text-base md:text-lg font-black text-black block">بيان ومظاهر المشكلة الفنية بالتفصيل:</label>
-                <textarea 
-                  rows={4} 
-                  required
-                  placeholder="الرجاء كتابة تفاصيل العطل هنا بوضوح (مثال: كسر في ذراع الهيدروليك، تهريب زيت الماكينة)" 
-                  value={faultDetails} 
-                  onChange={(e) => setFaultDetails(e.target.value)} 
-                  className="w-full px-4 py-3.5 text-base md:text-lg font-black rounded-none border-4 border-solid border-black outline-none resize-none bg-white text-black" 
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row justify-end gap-4 pt-4 border-t-4 border-solid border-black">
-                <button 
-                  type="button" 
-                  onClick={() => setIsFaultModalOpen(false)} 
-                  className="w-full sm:w-auto text-base md:text-lg font-black text-black bg-white border-4 border-solid border-black px-6 py-3 cursor-pointer hover:bg-black hover:text-white transition-colors"
-                >
-                  إلغاء وإغلاق النافذة
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={submittingFault} 
-                  className="w-full sm:w-auto bg-black text-white font-black text-base md:text-lg px-8 py-3 border-4 border-solid border-black cursor-pointer disabled:opacity-50"
-                >
-                  {submittingFault ? 'جاري توثيق البلاغ...' : 'اعتماد العطل وإخراجها من الخدمة'}
-                </button>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setIsFaultModalOpen(false)} className="text-xs font-bold text-slate-400 bg-transparent border-0 cursor-pointer">إلغاء</button>
+                <button type="submit" disabled={submittingFault} className="bg-red-600 text-white font-bold text-xs px-5 py-2 rounded-xl border-0 cursor-pointer shadow-md">{submittingFault ? 'جاري التوثيق...' : 'تثبيت العطل وإخراجها من الخدمة'}</button>
               </div>
             </form>
-
           </div>
         </div>
       )}
 
-      {/* 🟢 مودال تأكيد الإصلاح وإعادة التشغيل - حجم كبير ومقروء جداً لضعاف النظر */}
+      {/* 🟢 مودال تأكيد الإصلاح */}
       {isRepairModalOpen && repairEquipment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-2xl p-8 bg-white border-4 border-solid border-black text-black rounded-none shadow-none max-h-[90vh] overflow-y-auto" dir="rtl">
-            
-            <div className="border-b-4 border-solid border-black pb-4 mb-6">
-              <h3 className="text-2xl md:text-3xl font-black text-black m-0">إعلان جاهزية وإعادة الخدمة للأسطول</h3>
-              <p className="text-base font-bold text-black mt-2">أنت تقر بانتهاء أعمال الصيانة بالكامل للرمز الموحد: <span className="underline font-black">{repairEquipment.code}</span></p>
-            </div>
-
-            {repairError && (
-              <div className="p-4 mb-6 text-base font-black bg-black text-white border-4 border-solid border-black">
-                خطأ من السيرفر: {repairError}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className={`w-full max-w-md p-6 rounded-2xl border shadow-2xl ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-100 text-slate-800'}`}>
+            <h3 className="text-lg font-black text-emerald-600 mb-2">🟢 إعلان جاهزية الآلية وإعادتها للخدمة</h3>
+            <p className="text-xs text-slate-400 font-bold">أنت على وشك تأكيد إتمام الصيانة وإرجاع الآلية <span className="text-blue-500 font-black uppercase">{repairEquipment.code}</span> إلى الوضع (جاهز للعمل).</p>
+            {repairError && <div className="p-3 mb-4 text-xs font-bold bg-red-500/10 text-red-500 rounded-xl">{repairError}</div>}
+            <form onSubmit={handleRegisterRepair} className="space-y-4 mt-3">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-400">تاريخ الانتهاء من الإصلاح والموافقة:</label>
+                <input type="date" required value={repairDate} onChange={(e) => setRepairDate(e.target.value)} className={`w-full px-3 py-2 text-sm rounded-xl border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`} />
               </div>
-            )}
-
-            <form onSubmit={handleRegisterRepair} className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-base md:text-lg font-black text-black block">تاريخ الانتهاء الفعلي من الإصلاح والموافقة:</label>
-                <input 
-                  type="date" 
-                  required 
-                  value={repairDate} 
-                  onChange={(e) => setRepairDate(e.target.value)} 
-                  className="w-full px-4 py-3.5 text-base md:text-lg font-black rounded-none border-4 border-solid border-black outline-none bg-white text-black" 
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row justify-end gap-4 pt-4 border-t-4 border-solid border-black">
-                <button 
-                  type="button" 
-                  onClick={() => setIsRepairModalOpen(false)} 
-                  className="w-full sm:w-auto text-base md:text-lg font-black text-black bg-white border-4 border-solid border-black px-6 py-3 cursor-pointer hover:bg-black hover:text-white transition-colors"
-                >
-                  إلغاء الأمر
-                </button>
-                <button 
-                  type="submit" 
-                  disabled={submittingRepair} 
-                  className="w-full sm:w-auto bg-black text-white font-black text-base md:text-lg px-8 py-3 border-4 border-solid border-black cursor-pointer disabled:opacity-50"
-                >
-                  {submittingRepair ? 'جاري تحديث السيرفر...' : 'تأكيد وإرجاعها للعمل الميداني فورا'}
-                </button>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setIsRepairModalOpen(false)} className="text-xs font-bold text-slate-400 bg-transparent border-0 cursor-pointer">إلغاء الامر</button>
+                <button type="submit" disabled={submittingRepair} className="bg-emerald-600 text-white font-bold text-xs px-5 py-2 rounded-xl border-0 cursor-pointer shadow-md">{submittingRepair ? 'جاري الحفظ والتشغيل...' : '✅ الآلية جاهزة للعمل الميداني فورا'}</button>
               </div>
             </form>
-
           </div>
         </div>
       )}
