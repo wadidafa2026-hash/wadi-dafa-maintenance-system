@@ -143,5 +143,53 @@ router.get('/reports/all', async (req, res) => {
   }
 });
 
-export default router;
+// 5. تعديل شامل لبيانات سجل عطل/صيانة معين لتصحيح الأخطاء البشرية قبل طباعة التقارير
+// PUT /api/maintenance/logs/:logId
+router.put('/logs/:logId', async (req, res) => {
+  try {
+    const { logId } = req.params;
+    const { breakdownDate, repairDate, details } = req.body;
 
+    if (!breakdownDate) {
+      return res.status(400).json({ error: 'تاريخ العطل حقل إجبارى لتحديث السجل' });
+    }
+
+    // تجهيز كائن التحديث بالتوافق مع السكيما وتحويل التواريخ القادمة من الفرونت إند لـ Date Objects
+    const updateData: any = {
+      breakdownDate: new Date(breakdownDate),
+      details: details ? details.trim() : null,
+    };
+
+    // إذا تم إرسال تاريخ إصلاح نقوم بتحويله وتغيير الحالة لـ repaired، وإلا تعود broken لفتح البلاغ مجدداً
+    if (repairDate) {
+      updateData.repairDate = new Date(repairDate);
+      updateData.status = 'repaired'; 
+    } else {
+      updateData.repairDate = null;
+      updateData.status = 'broken'; 
+    }
+
+    const updatedRecord = await db
+      .update(maintenanceLogs)
+      .set(updateData)
+      .where(eq(maintenanceLogs.id, Number(logId)))
+      .returning();
+
+    if (updatedRecord.length === 0) {
+      return res.status(404).json({ error: 'سجل الصيانة المطلوب غير موجود بالنظام' });
+    }
+
+    // مزامنة حالة المعدة الحقيقية في جدول الأسطول فوراً بناءً على حالة البلاغ المحدثة
+    await db
+      .update(equipment)
+      .set({ status: updateData.status })
+      .where(eq(equipment.id, updatedRecord[0].equipmentId));
+
+    return res.status(200).json({ success: true, log: updatedRecord[0] });
+  } catch (error) {
+    console.error('Error updating maintenance log:', error);
+    return res.status(500).json({ error: 'حدث خطأ داخلي أثناء تعديل سجل الصيانة' });
+  }
+});
+
+export default router;

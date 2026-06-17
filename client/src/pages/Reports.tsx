@@ -1,13 +1,7 @@
 // client/src/pages/Reports.tsx
 import React, { useState, useEffect } from 'react';
 
-interface Equipment {
-  id: number;
-  code: string;
-  name: string;
-}
-
-interface FaultRecord {
+interface MaintenanceReportRecord {
   id: number;
   equipmentId: number;
   equipmentCode: string;
@@ -15,233 +9,285 @@ interface FaultRecord {
   equipmentType: 'equipment' | 'vehicle';
   serialNumber: string | null;
   plateNumber: string | null;
-  breakdownDate: string; // تم التحديث ليطابق حقل الباك إند الفعلي
+  breakdownDate: string;
   repairDate: string | null;
   details: string | null;
-  projectNameSnapshot: string; // تم التحديث ليطابق حقل الباك إند الفعلي
-  purchaseItem: string | null;
-  purchasePrice: number | null;
+  projectNameSnapshot: string;
 }
 
 interface ReportsProps {
+  userRole: 'super_admin' | 'sub_admin' | 'viewer';
   isDarkMode: boolean;
 }
 
-export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
-  const [reportTab, setReportTab] = useState<'assets' | 'purchases'>('assets');
-  const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
-  const [faultsList, setFaultsList] = useState<FaultRecord[]>([]);
+export const Reports: React.FC<ReportsProps> = ({ userRole, isDarkMode }) => {
+  const [reportsData, setReportsData] = useState<MaintenanceReportRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const [reportAssetFilter, setReportAssetFilter] = useState('all'); 
-  const [reportTimeFilter, setReportTimeFilter] = useState<'all' | 'month' | 'range'>('all');
-  const [selectedMonth, setSelectedMonth] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  // ─── حالات مودال التعديل وتصحيح السجلات ───────────────────────────
+  const [isEditLogModalOpen, setIsEditLogModalOpen] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<MaintenanceReportRecord | null>(null);
+  const [editBreakdownDate, setEditBreakdownDate] = useState('');
+  const [editRepairDate, setEditRepairDate] = useState('');
+  const [editDetails, setEditDetails] = useState('');
+  const [updatingLog, setUpdatingLog] = useState(false);
+  const [logError, setLogError] = useState<string | null>(null);
 
-  const fetchReportsData = async () => {
+  const isAuthorized = userRole === 'super_admin' || userRole === 'sub_admin';
+
+  // جلب تقارير الصيانة الشاملة من السيرفر
+  const fetchComprehensiveReports = async () => {
     setLoading(true);
-    const baseUrl = import.meta.env.VITE_API_URL || ""; 
+    const baseUrl = import.meta.env.VITE_API_URL || "";
     try {
-      const resEquip = await fetch(`${baseUrl}/api/equipment`);
-      if (resEquip.ok) {
-        const data = await resEquip.json();
-        setEquipmentList(data);
-      }
-      
-      // ضرب الراوت الجديد الموحد في الباك إند
-      const resFaults = await fetch(`${baseUrl}/api/maintenance/reports/all`);
-      if (resFaults.ok) {
-        const data = await resFaults.json();
-        setFaultsList(data);
+      const res = await fetch(`${baseUrl}/api/maintenance/reports/all`);
+      if (res.ok) {
+        const data = await res.json();
+        setReportsData(data);
       }
     } catch (error) {
-      console.error('Error fetching data for reports:', error);
+      console.error('Error fetching reports:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchReportsData();
+    fetchComprehensiveReports();
   }, []);
 
-  // 🧮 محرك الفلترة الذكي (تم فك قيد التواريخ مؤقتاً للتأكد من وصول البيانات)
-  const filteredFaults = faultsList.filter(record => {
-    // 1. الفلترة باسم الآلية فقط
-    if (reportAssetFilter !== 'all' && record.equipmentName !== reportAssetFilter) {
-      return false;
-    }
-    return true;
-  });
+  // دالة إرسال التعديلات الجديدة للسيرفر وحفظ السجل
+  const handleUpdateLogSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLog) return;
 
-  // قسم المشتريات - متروك كما هو تماماً
-  const filteredPurchases = filteredFaults.filter(r => r.purchasePrice !== null && (r.purchasePrice ?? 0) > 0);
-  const totalFinancialCost = filteredPurchases.reduce((sum, r) => sum + (r.purchasePrice || 0), 0);
+    setUpdatingLog(true);
+    setLogError(null);
+    const baseUrl = import.meta.env.VITE_API_URL || "";
+
+    try {
+      const response = await fetch(`${baseUrl}/api/maintenance/logs/${selectedLog.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          breakdownDate: editBreakdownDate,
+          repairDate: editRepairDate || null,
+          details: editDetails
+        })
+      });
+
+      if (response.ok) {
+        setIsEditLogModalOpen(false);
+        fetchComprehensiveReports(); // تحديث الجدول تلقائياً بدون تحديث الصفحة
+      } else {
+        const errData = await response.json();
+        setLogError(errData.error || 'فشل في تحديث بيانات التقرير المختار.');
+      }
+    } catch (err) {
+      setLogError('حدث خطأ أثناء الاتصال بالنظام.');
+    } finally {
+      setUpdatingLog(false);
+    }
+  };
+
+  // فرز الفلترة والبحث حسب كود المعدة
+  const filteredRecords = reportsData.filter(record =>
+    record.equipmentCode.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // دالة طباعة التقارير الرسمية
+  const handlePrint = () => {
+    window.print();
+  };
+
+  // دوال لتنسيق شكل التواريخ المعروضة
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return '---';
+    return dateString.split('T')[0];
+  };
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-6 w-full box-border" dir="rtl">
       
-      {/* تابات التبديل */}
-      <div className="flex border-b border-slate-200 dark:border-slate-800 gap-8 font-black text-md">
-        <button onClick={() => setReportTab('assets')} className={`pb-3 transition-all border-0 bg-transparent cursor-pointer font-sans text-md ${reportTab === 'assets' ? 'border-b-4 border-solid border-amber-500 text-amber-500 font-black' : 'text-slate-400 font-bold'}`}>📋 تقرير المعدات والمركبات (الفني)</button>
-        <button onClick={() => setReportTab('purchases')} className={`pb-3 transition-all border-0 bg-transparent cursor-pointer font-sans text-md ${reportTab === 'purchases' ? 'border-b-4 border-solid border-amber-500 text-amber-500 font-black' : 'text-slate-400 font-bold'}`}>💰 تقرير المشتريات المالي</button>
-      </div>
-
-      {/* محرك البحث والفلترة */}
-      <div className={`p-5 rounded-2xl border border-solid space-y-4 ${isDarkMode ? 'bg-slate-900 border-slate-800 shadow-none' : 'bg-white border-slate-100 shadow-sm'}`}>
-        <h4 className="text-xs font-black text-amber-500 m-0">⚙️ محرك تصفية وفلترة السجلات حياً من قاعدة البيانات:</h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          
-          <div className="space-y-1">
-            <label className="text-[11px] text-slate-400 block font-bold">ابحث باسم آلية معينة أو اعرض الكل:</label>
-            <select value={reportAssetFilter} onChange={(e) => setReportAssetFilter(e.target.value)} className={`w-full px-3 py-2 rounded-xl border text-xs outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
-              <option value="all">📁 عرض جميع الآليات والمركبات المسجلة</option>
-              {equipmentList.map(e => <option key={e.id} value={e.name}>{e.name} ({e.code})</option>)}
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] text-slate-400 block font-bold">النطاق الزمني للتقرير:</label>
-            <select value={reportTimeFilter} onChange={(e) => setReportTimeFilter(e.target.value as any)} className={`w-full px-3 py-2 rounded-xl border text-xs outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
-              <option value="all">♾️ تقرير شامل (منذ إطلاق النظام)</option>
-              <option value="month">📅 شهر محدد فريد</option>
-              <option value="range">⏳ من تاريخ ... إلى تاريخ ...</option>
-            </select>
-          </div>
-
-          {reportTimeFilter === 'month' && (
-            <div className="space-y-1">
-              <label className="text-[11px] text-slate-400 block font-bold">حدد الشهر:</label>
-              <input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className={`w-full px-3 py-2 rounded-xl border text-xs outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`} />
-            </div>
-          )}
-
-          {reportTimeFilter === 'range' && (
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <label className="text-[11px] text-slate-400 block font-bold">من تاريخ:</label>
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={`w-full px-3 py-1.5 text-xs rounded-xl border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[11px] text-slate-400 block font-bold">إلى تاريخ:</label>
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={`w-full px-3 py-1.5 text-xs rounded-xl border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`} />
-              </div>
-            </div>
-          )}
+      {/* هيدر الصفحة وأزرار التحكم */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-slate-500/10">
+        <div>
+          <h2 className="text-xl font-black text-blue-800 dark:text-blue-400 m-0">📊 التقارير الإدارية وسجلات حركة الأعطال والصيانة</h2>
+          <p className="text-xs text-slate-400 m-0 mt-1">تصدير، مراجعة، وتصحيح بيانات جاهزية أسطول الآليات والمركبات بوادي دفا قبل الطباعة.</p>
         </div>
-
-        <div className="flex justify-end pt-1">
-          <button onClick={() => window.print()} className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 py-2 rounded-xl text-xs shadow border-0 cursor-pointer transition-all">
-            🖨️ طباعة واستخراج هذا التقرير كـ PDF
-          </button>
-        </div>
+        <button 
+          onClick={handlePrint}
+          className="bg-slate-800 hover:bg-slate-900 text-white font-black text-sm px-5 py-2.5 rounded-xl border-0 cursor-pointer shadow flex items-center gap-2"
+        >
+          🖨️ طباعة وتصدير التقرير الحالي
+        </button>
       </div>
 
-      {/* 🔍 كاشف وعداد البيانات من الجوال */}
-      <div className="p-2 bg-blue-500/10 text-blue-500 rounded-xl text-xs font-bold text-center">
-        📊 عدد السجلات المستلمة من السيرفر حالياً: {faultsList.length} سجل
+      {/* حقل البحث والتصفية الفورية */}
+      <div className="bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border-2 border-blue-100 dark:border-slate-800">
+        <input 
+          type="text" 
+          placeholder="🔍 اكتب كود الآلية لفلترة السجلات المحددة فوراً..." 
+          value={searchQuery} 
+          onChange={(e) => setSearchQuery(e.target.value)} 
+          className={`w-full md:max-w-xl px-4 py-2.5 rounded-xl border-2 text-sm font-bold outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-white border-slate-300'}`} 
+        />
       </div>
 
-      {/* عرض البيانات */}
+      {/* جدول البيانات الرئيسى للتقارير */}
       {loading ? (
-        <p className="text-center text-xs text-slate-400 animate-pulse">جاري تحميل بيانات السجلات الفنية والمالية...</p>
-      ) : reportTab === 'assets' ? (
-        <div className={`rounded-2xl border border-solid overflow-hidden ${isDarkMode ? 'bg-slate-900 border-slate-800 shadow-none' : 'bg-white border-slate-100 shadow-sm'}`}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-right border-collapse text-xs md:text-sm">
-              <thead>
-                <tr className={`${isDarkMode ? 'bg-slate-950 text-slate-400' : 'bg-slate-100 text-slate-600'} font-black border-b border-solid border-slate-500/10`}>
-                  <th className="p-4 border border-solid border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-center">نوع المعدة - المركبة</th>
-                  <th className="p-4 border border-solid border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-center">رقم التسلسل او اللوحة</th>
-                  <th className="p-4 border border-solid border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-center">كود وادي دفا</th>
-                  <th className="p-4 border border-solid border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-center">تفاصيل العطل</th>
-                  <th className="p-4 border border-solid border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-center">تاريخ العطل</th>
-                  <th className="p-4 border border-solid border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-center">تاريخ الاصلاح</th>
-                  <th className="p-4 border border-solid border-slate-300 dark:border-slate-700 bg-slate-200 dark:bg-slate-950 text-center">اسم المشروع</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-solid divide-slate-500/10 font-medium">
-                {filteredFaults.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-400 text-xs">⚠️ لا توجد بلاغات صيانة أو أعطال مسجلة تطابق خيارات الفلترة المحددة حالياً.</td>
-                  </tr>
-                ) : (
-                  filteredFaults.map((record) => (
-                    <tr key={record.id} className="hover:bg-slate-500/5 transition-all text-center">
-                      <td className="p-4 border border-solid border-slate-200 dark:border-slate-800">
-                        {record.equipmentType === 'equipment' ? '⚙️ معدة ثقيلة' : '🚚 مركبة / سيارة'} 
-                        <span className="text-slate-400 text-xs block mt-0.5">({record.equipmentName})</span>
-                      </td>
-                      <td className="p-4 font-mono text-slate-500 dark:text-slate-300 border border-solid border-slate-200 dark:border-slate-800">
-                        {record.equipmentType === 'equipment' ? (record.serialNumber || 'بلا سيريال') : (record.plateNumber || 'بلا لوحة')}
-                      </td>
-                      <td className="p-4 font-black text-blue-500 uppercase tracking-wider border border-solid border-slate-200 dark:border-slate-800">{record.equipmentCode}</td>
-                      <td className="p-4 max-w-xs whitespace-pre-line text-xs leading-relaxed text-slate-600 dark:text-slate-300 border border-solid border-slate-200 dark:border-slate-800 text-right">
-                        {record.details || 'لم تدون تفاصيل'}
-                      </td>
-                      <td className="p-4 font-mono text-slate-500 border border-solid border-slate-200 dark:border-slate-800">
-                        {record.breakdownDate ? new Date(record.breakdownDate).toLocaleDateString('en-GB') : '-'}
-                      </td>
-                      <td className="p-4 font-mono border border-solid border-slate-200 dark:border-slate-800">
-                        {record.repairDate ? (
-                          <span className="text-emerald-500 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full text-[11px]">
-                            {new Date(record.repairDate).toLocaleDateString('en-GB')}
-                          </span>
-                        ) : (
-                          <span className="text-red-500 font-bold bg-red-500/10 px-2 py-0.5 rounded-full text-[11px]">⚠️ متعطلة</span>
-                        )}
-                      </td>
-                      <td className="p-4 text-slate-700 dark:text-slate-200 font-bold border border-solid border-slate-200 dark:border-slate-800">
-                        {record.projectNameSnapshot}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <p className="text-center text-sm font-bold text-slate-500 animate-pulse py-6">جاري توليد التقارير الموحدة...</p>
       ) : (
-        /* تقرير المشتريات مالي - متروك كما هو تماماً */
-        <div className="space-y-4">
-          <div className="p-4 rounded-xl flex justify-between items-center bg-gradient-to-l from-amber-500 to-orange-600 text-white shadow-md">
-            <span className="font-bold text-sm">💰 إجمالي حصر فواتير ومصاريف المشتريات للفترة المحددة بالفلاتر أعلاه:</span>
-            <span className="text-xl font-black tracking-wide">{totalFinancialCost.toLocaleString()} ريال سعودي</span>
-          </div>
-          
-          <div className={`rounded-2xl border border-solid overflow-hidden ${isDarkMode ? 'bg-slate-900 border-slate-800 shadow-none' : 'bg-white border-slate-100 shadow-sm'}`}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-right border-collapse text-sm">
-                <thead>
-                  <tr className={`${isDarkMode ? 'bg-slate-950 text-slate-400' : 'bg-slate-100 text-slate-600'} font-black border-b border-solid border-slate-500/10`}>
-                    <th className="p-4">كود الآلية المشتري لها</th>
-                    <th className="p-4">اسم قطعة الغيار / المشتري المالي</th>
-                    <th className="p-4">التاريخ المالي للقيد</th>
-                    <th className="p-4">التكلفة والمدفوع الإجمالي</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-solid divide-slate-500/10 font-medium">
-                  {filteredPurchases.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="p-8 text-center text-slate-400 text-xs">💸 لا توجد فواتير مشتريات مربوطة بأعطال في هذه الفترة حالياً.</td>
-                    </tr>
-                  ) : (
-                    filteredPurchases.map((record) => (
-                      <tr key={record.id} className="hover:bg-slate-500/5 transition-all">
-                        <td className="p-4 font-black text-blue-500 uppercase">{record.equipmentCode}</td>
-                        <td className="p-4 text-xs">{record.purchaseItem}</td>
-                        <td className="p-4 font-mono text-slate-400">{record.breakdownDate}</td>
-                        <td className="p-4 font-bold text-amber-500">{(record.purchasePrice || 0).toLocaleString()} ريال</td>
-                      </tr>
-                    ))
+        <div className={`overflow-x-auto rounded-xl border-2 ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white shadow-sm'}`}>
+          <table className="w-full text-right border-collapse text-sm">
+            <thead>
+              <tr className={`border-b ${isDarkMode ? 'bg-slate-950 text-slate-400 border-slate-800' : 'bg-slate-50 text-slate-600 border-slate-200'} text-xs font-black`}>
+                <th className="p-3">كود الآلية</th>
+                <th className="p-3">الاسم الفني</th>
+                <th className="p-3">الموقع وقت العطل</th>
+                <th className="p-3">تاريخ وقوع العطل</th>
+                <th className="p-3">تاريخ الإصلاح</th>
+                <th className="p-3">البيان وتفاصيل المشكلة</th>
+                <th className="p-3 text-center">حالة البلاغ</th>
+                {isAuthorized && <th className="p-3 text-center no-print">إجراءات التصحيح</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRecords.map((record) => (
+                <tr 
+                  key={record.id} 
+                  className={`border-b transition-all font-bold ${isDarkMode ? 'border-slate-800 text-slate-200 hover:bg-slate-800/40' : 'border-slate-200 text-slate-900 hover:bg-slate-50'}`}
+                >
+                  <td className="p-3 uppercase text-blue-700 dark:text-blue-400 font-black">{record.equipmentCode}</td>
+                  <td className="p-3 text-xs md:text-sm">{record.equipmentName}</td>
+                  <td className="p-3 text-xs text-amber-600 dark:text-amber-400">{record.projectNameSnapshot}</td>
+                  <td className="p-3 text-xs font-sans text-red-600">{formatDate(record.breakdownDate)}</td>
+                  <td className="p-3 text-xs font-sans text-emerald-600">{record.repairDate ? formatDate(record.repairDate) : '---'}</td>
+                  <td className="p-3 text-xs opacity-90 max-w-xs truncate" title={record.details || ''}>{record.details || 'بدون تفاصيل'}</td>
+                  <td className="p-3 text-center">
+                    <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-black text-white ${record.repairDate ? 'bg-emerald-600' : 'bg-red-600'}`}>
+                      {record.repairDate ? 'مغلق ومصلح' : 'مفتوح (معطلة)'}
+                    </span>
+                  </td>
+                  {isAuthorized && (
+                    <td className="p-3 text-center no-print">
+                      <button
+                        onClick={() => {
+                          setSelectedLog(record);
+                          setEditBreakdownDate(record.breakdownDate ? record.breakdownDate.split('T')[0] : '');
+                          setEditRepairDate(record.repairDate ? record.repairDate.split('T')[0] : '');
+                          setEditDetails(record.details || '');
+                          setIsEditLogModalOpen(true);
+                        }}
+                        className="bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-1.5 rounded-lg border-0 cursor-pointer font-black shadow-sm"
+                      >
+                        ✏️ تصحيح السجل
+                      </button>
+                    </td>
                   )}
-                </tbody>
-              </table>
+                </tr>
+              ))}
+              {filteredRecords.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="p-6 text-center text-slate-500 font-bold">لا توجد سجلات حركة صيانة مطابقة للبحث.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ─── ✏️ مودال تصحيح وتعديل بيانات السجل الخاطئ ─────────────────── */}
+      {isEditLogModalOpen && selectedLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" dir="rtl">
+          <div className={`w-full max-w-md p-6 rounded-2xl border shadow-2xl relative ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-100 text-slate-800'}`}>
+            
+            <div className="mb-4 pb-2 border-b border-slate-500/10">
+              <h3 className="text-base font-black text-amber-500 m-0">✏️ مراجعة وتصحيح سجل صيانة ({selectedLog.equipmentCode})</h3>
+              <p className="text-[11px] text-slate-400 mt-1">الموقع الموثق وقت العطل تاريخياً: <span className="font-bold text-blue-500">{selectedLog.projectNameSnapshot}</span></p>
             </div>
+            
+            {logError && (
+              <div className="p-3 mb-4 text-xs font-bold bg-red-500/10 text-red-500 rounded-xl border border-red-500/20">
+                ⚠️ {logError}
+              </div>
+            )}
+            
+            <form onSubmit={handleUpdateLogSubmit} className="space-y-4 text-sm">
+              
+              {/* تعديل تاريخ وقوع العطل */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-400">تاريخ وقوع العطل الفعلي:</label>
+                <input 
+                  type="date" 
+                  required 
+                  value={editBreakdownDate} 
+                  onChange={(e) => setEditBreakdownDate(e.target.value)} 
+                  className={`w-full px-3 py-2 text-sm rounded-xl border outline-none font-bold ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`} 
+                />
+              </div>
+
+              {/* تعديل تاريخ الإصلاح */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-400">تاريخ الإصلاح والجاهزية (امسحه ليظل العطل مفتوحاً):</label>
+                <input 
+                  type="date" 
+                  value={editRepairDate} 
+                  onChange={(e) => setEditRepairDate(e.target.value)} 
+                  className={`w-full px-3 py-2 text-sm rounded-xl border outline-none font-bold ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`} 
+                />
+              </div>
+
+              {/* تعديل وصف وتفاصيل المشكلة */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-400">تعديل الملاحظات والبيان الفني للمشكلة:</label>
+                <textarea 
+                  rows={3} 
+                  value={editDetails} 
+                  onChange={(e) => setEditDetails(e.target.value)} 
+                  placeholder="اكتب تفاصيل العطل المعدلة هنا..." 
+                  className={`w-full px-3 py-2 text-sm rounded-xl border outline-none resize-none font-bold ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`} 
+                />
+              </div>
+
+              {/* أزرار الحفظ والإغلاق */}
+              <div className="flex justify-end gap-2 pt-3 border-t border-solid border-slate-500/10">
+                <button type="button" onClick={() => setIsEditLogModalOpen(false)} className="text-xs font-bold text-slate-400 bg-transparent border-0 cursor-pointer">إلغاء الأمر</button>
+                <button 
+                  type="submit" 
+                  disabled={updatingLog} 
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-black text-xs px-5 py-2 rounded-xl border-0 cursor-pointer shadow-md"
+                >
+                  {updatingLog ? 'جاري حفظ التعديل...' : '💾 اعتماد وتصحيح التقرير'}
+                </button>
+              </div>
+
+            </form>
           </div>
         </div>
       )}
+
+      {/* كود تنسيق إضافي لعملية الطباعة لمنع طباعة أزرار التعديل والبحث */}
+      <style>{`
+        @media print {
+          .no-print, button, input, .bg-blue-50 {
+            display: none !important;
+          }
+          body {
+            background: white !important;
+            color: black !important;
+          }
+          table {
+            border: 1px solid #000 !important;
+            width: 100% !important;
+          }
+          th, td {
+            border: 1px solid #000 !important;
+            padding: 8px !important;
+          }
+        }
+      `}</style>
 
     </div>
   );
