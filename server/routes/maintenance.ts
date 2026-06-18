@@ -3,7 +3,6 @@ import { Router } from 'express';
 import { db } from '../db';
 import { maintenanceLogs, equipment, projects } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
-import { GoogleGenerativeAI } from '@google/generative-ai'; // الكلاس المعتمد والمثبت في السيرفر
 
 const router = Router();
 
@@ -17,6 +16,7 @@ router.post('/breakdown', async (req, res) => {
       return res.status(400).json({ error: 'معرف الآلية وتاريخ العطل حقول مطلوبة' });
     }
 
+    // جلب بيانات الآلية مع اسم مشروعها الحالي لأخذ اللقطة التاريخية
     const targetEquipment = await db
       .select({
         id: equipment.id,
@@ -34,6 +34,7 @@ router.post('/breakdown', async (req, res) => {
 
     const currentProjectName = targetEquipment[0].projectName || 'خارج المشاريع / الورشة المركزية';
 
+    // أ) إنشاء سجل العطل الجديد
     const newLog = await db.insert(maintenanceLogs).values({
       equipmentId: Number(equipmentId),
       projectNameSnapshot: currentProjectName,
@@ -42,6 +43,7 @@ router.post('/breakdown', async (req, res) => {
       status: 'broken',
     }).returning();
 
+    // ب) تحديث حالة المعدة نفسها في جدول الأسطول لتصبح متعطلة
     await db
       .update(equipment)
       .set({ status: 'broken' })
@@ -65,6 +67,7 @@ router.put('/repair/:logId', async (req, res) => {
       return res.status(400).json({ error: 'تاريخ الإصلاح والجاهزية مطلوب' });
     }
 
+    // أ) تحديث سجل العطل وإغلاقه
     const updatedLog = await db
       .update(maintenanceLogs)
       .set({
@@ -78,6 +81,7 @@ router.put('/repair/:logId', async (req, res) => {
       return res.status(404).json({ error: 'سجل العطل غير موجود' });
     }
 
+    // ب) إعادة حالة المعدة المرتبطة لتصبح جاهزة (available) تلقائياً
     await db
       .update(equipment)
       .set({ status: 'available' })
@@ -184,7 +188,7 @@ router.put('/logs/:logId', async (req, res) => {
   }
 });
 
-// 🤖 6. مسار استقبال محادثات المستشار الذكي لشركة وادي دفا
+// 🤖 6. مسار استقبال محادثات المستشار الذكي لشركة وادي دفا (باستخدام المكاملة المباشرة والمضمونة)
 // POST /api/maintenance/ai-chat
 router.post('/ai-chat', async (req, res) => {
   try {
@@ -194,17 +198,11 @@ router.post('/ai-chat', async (req, res) => {
       return res.status(400).json({ success: false, error: 'الرسالة فارغة' });
     }
 
-    // أ) سحب لقطة حية وفورية من قاعدة البيانات
+    // أ) جلب لقطة حية وفورية من قاعدة البيانات لأسطول شركة وادي دفا
     const fleetData = await db.select({ code: equipment.code, name: equipment.name, status: equipment.status, type: equipment.type }).from(equipment);
     const logsData = await db.select({ code: equipment.code, name: equipment.name, breakdown: maintenanceLogs.breakdownDate, repair: maintenanceLogs.repairDate, details: maintenanceLogs.details, project: maintenanceLogs.projectNameSnapshot }).from(maintenanceLogs).innerJoin(equipment, eq(maintenanceLogs.equipmentId, equipment.id));
 
-    // ب) التهيئة الرسمية للكلاس المتاح بالسيرفر
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-    
-    // 🎯 التعديل الجوهري: استخدام تسمية الموديل المتوافقة مع إصدار v1beta المثبت بالسيرفر
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
-
-    // ج) توجيه جيمني الصارم ليلتزم ببيانات وهوية الشركة
+    // ب) إعداد التعليمات الصارمة والبيانات الحية المدمجة
     const systemInstruction = `
       أنت "المستشار الفني الذكي" الرسمي لنظام صيانة المعدات والمركبات في (شركة وادي دفا للمقاولات).
       مهمتك الصارمة والمحددة هي الإجابة على أسئلة مسؤول الصيانة ومساعدته في حصر وتحليل الأعطال بناءً على البيانات الحية المرفقة أدناه فقط.
@@ -219,11 +217,28 @@ router.post('/ai-chat', async (req, res) => {
       - سجل بلاغات الأعطال والصيانة التاريخي بالكامل: ${JSON.stringify(logsData)}
     `;
 
-    // د) إرسال الطلب بالهيكلية القياسية المتوافقة مع الإصدار المستقر للمكتبة
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: systemInstruction + "\n\nUser Question: " + message }] }]
+    // 🎯 ج) الربط الفوري والمباشر مع خوادم جوجل لضمان تخطي مشاكل الحزم القديمة على Render
+    const apiKey = process.env.GEMINI_API_KEY || '';
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: `${systemInstruction}\n\nUser Question: ${message}` }]
+        }]
+      })
     });
-    const replyText = result.response.text;
+
+    if (!response.ok) {
+      const errData = await response.json();
+      console.error('Google API Direct Error:', errData);
+      throw new Error('فشل السيرفر في التواصل المباشر مع بوابة الذكاء الاصطناعي.');
+    }
+
+    const data = await response.json();
+    const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || "لم أتمكن من استخراج الإجابة الفنية، يرجى المحاولة مرة أخرى.";
 
     return res.json({
       success: true,
@@ -233,7 +248,7 @@ router.post('/ai-chat', async (req, res) => {
     console.error('Gemini API Error:', error);
     return res.status(500).json({
       success: false,
-      error: 'عذراً يا هندسة، فشل سيرفر الذكاء الاصطناعي في معالجة وتحليل البيانات الحالية.',
+      error: 'عذراً يا هندسة، فشل سيرفر الذكاء الاصطناعي في معالجة وتحليل البيانات الحالية بسبب خطأ داخلي.',
     });
   }
 });
