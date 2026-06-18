@@ -16,18 +16,18 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
   onSuccess,
   isDarkMode = false,
 }) => {
-  // ─── حالات الحقول الأساسية ───────────────────────────────────
+  // ─── حالات الحقول الأساسية (محفوظة بالكامل) ───────────────────────────────────
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [model, setModel] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
   const [plateNumber, setPlateNumber] = useState('');
   
-  // 🏗️ حالة المشاريع (القائمة المنسدلة)
+  // 🏗️ حالة المشاريع (محفوظة بالكامل)
   const [projectsList, setProjectsList] = useState<{ id: number; name: string }[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState('');
 
-  // 📸 حالات روابط الصور (كلاودنري لاحقاً)
+  // 📸 حالات روابط الصور (محفوظة بالكامل)
   const [frontImageUrl, setFrontImageUrl] = useState('');
   const [backImageUrl, setBackImageUrl] = useState('');
   const [codeImageUrl, setCodeImageUrl] = useState('');
@@ -35,7 +35,7 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 🔄 جلب قائمة المشاريع حياً عند فتح المودال لتغذية القائمة المنسدلة
+  // 🔄 جلب قائمة المشاريع حياً عند فتح المودال (محفوظة ومؤمنة بالكامل)
   useEffect(() => {
     if (isOpen) {
       const fetchProjects = async () => {
@@ -68,7 +68,6 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
 
     const baseUrl = import.meta.env.VITE_API_URL || "";
 
-    // 📦 تجهيز البيانات بالتوافق التام مع الـ Schema الرسمية
     const payload = {
       code: code.trim().toUpperCase(),
       name: name.trim() || `آلية غير مسمية (${code})`,
@@ -76,15 +75,10 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
       type,
       serialNumber: type === 'equipment' ? (serialNumber.trim() || null) : null,
       plateNumber: type === 'vehicle' ? (plateNumber.trim() || null) : null,
-      
-      // إرسال الرقم المعرّف للمشروع (ID) بدلاً من النص
       currentProjectId: currentProjectId ? parseInt(currentProjectId) : null,
-      
-      // روابط الصور الاختيارية
       frontImageUrl: frontImageUrl.trim() || null,
       backImageUrl: backImageUrl.trim() || null,
       codeImageUrl: codeImageUrl.trim() || null,
-      
       status: 'available', 
     };
 
@@ -96,7 +90,6 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
       });
 
       if (response.ok) {
-        // تنظيف الحقول تماماً بعد النجاح
         setCode(''); setName(''); setModel(''); setSerialNumber(''); setPlateNumber(''); 
         setCurrentProjectId(''); setFrontImageUrl(''); setBackImageUrl(''); setCodeImageUrl('');
         onSuccess(); 
@@ -114,62 +107,60 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" dir="rtl">
-      <div className={`w-full max-w-lg p-6 rounded-2xl border shadow-2xl relative max-h-[90vh] overflow-y-auto ${
-        isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-100 text-slate-800'
-      }`}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" dir="rtl">
+      {/* تم تحويل الحاوية إلى خلفية بيضاء ناصعة مع حدود سوداء سميكة وحادة للتباين العالي */}
+      <div className="w-full max-w-xl p-6 md:p-8 rounded-xl border-4 border-solid border-black bg-white text-black shadow-[0_0_30px_rgba(0,0,0,0.5)] max-h-[92vh] overflow-y-auto">
         
-        <div className="mb-4 pb-2 border-b border-slate-500/10">
-          <h3 className="text-lg font-black text-blue-500">
+        {/* رأس المودال: العنوان باللون الأزرق الغامق الممتاز والواضح جداً والخط سميك جداً */}
+        <div className="mb-5 pb-3 border-b-4 border-solid border-black">
+          <h3 className="text-2xl font-black text-blue-900 m-0">
             {type === 'equipment' ? '⚙️ تسجيل معدة ثقيلة جديدة' : '🚚 تسجيل مركبة / سيارة جديدة'}
           </h3>
-          <p className="text-xs text-slate-400 mt-1">
-            حقل الكود إجباري، وباقي الحقول اختيارية لتسهيل العمل اليومي.
+          <p className="text-sm font-black text-black mt-1.5 bg-yellow-100 p-2 rounded border-2 border-solid border-black">
+            حقل الكود إجباري، وباقي الحقول اختيارية لتسهيل العمل اليومي الميداني.
           </p>
         </div>
 
         {error && (
-          <div className="p-3 mb-4 text-xs font-bold bg-red-500/10 text-red-500 rounded-xl border border-red-500/20">
+          <div className="p-3 mb-4 text-base font-black bg-red-100 text-red-900 rounded border-4 border-solid border-red-700">
             ⚠️ {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           
-          {/* كود الآلية */}
+          {/* كود الآلية - أسود قاتم للعناوين، أزرق داكن للنص والـ Placeholder والحدود سوداء حادة */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-400">كود الآلية الفريد <span className="text-red-500 font-black">*</span>:</label>
+            <label className="block text-base font-black text-black">كود الآلية الفريد <span className="text-red-700 text-lg font-black">*</span>:</label>
             <input
               type="text"
               required
-              placeholder="مثال: EQ-01 أو VH-14"
+              placeholder="مثال: ادخل السيريال نمبر او الكود مثل EQ-01"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              className={`w-full px-4 py-2.5 text-sm font-black tracking-wider rounded-xl border outline-none focus:border-blue-500 ${
-                isDarkMode ? 'bg-slate-950 border-slate-800 text-amber-400' : 'bg-slate-50 border-slate-200 text-blue-600'
-              }`}
+              className="w-full px-4 py-3 text-base font-black tracking-wider rounded border-2 border-solid border-black bg-white text-blue-900 placeholder:text-blue-900/70 outline-none focus:border-blue-900 shadow-sm"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-400">الاسم الفني الإجمالي:</label>
+              <label className="block text-base font-black text-black">الاسم الفني الإجمالي:</label>
               <input
                 type="text"
                 placeholder="مثال: بولدوزر كاتر بيلر"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className={`w-full px-3 py-2 text-sm rounded-xl border outline-none focus:border-blue-500 ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
+                className="w-full px-4 py-3 text-base font-black rounded border-2 border-solid border-black bg-white text-blue-900 placeholder:text-blue-900/70 outline-none focus:border-blue-900 shadow-sm"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-400">الموديل / سنة الصنع:</label>
+              <label className="block text-base font-black text-black">الموديل / سنة الصنع:</label>
               <input
                 type="text"
                 placeholder="مثال: D9R / 2024"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                className={`w-full px-3 py-2 text-sm rounded-xl border outline-none focus:border-blue-500 ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
+                className="w-full px-4 py-3 text-base font-black rounded border-2 border-solid border-black bg-white text-blue-900 placeholder:text-blue-900/70 outline-none focus:border-blue-900 shadow-sm"
               />
             </div>
           </div>
@@ -177,41 +168,39 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {type === 'equipment' ? (
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-400">الرقم التسلسلي (Serial Number):</label>
+                <label className="block text-base font-black text-black">الرقم التسلسلي (Serial Number):</label>
                 <input
                   type="text"
-                  placeholder="أدخل السيريال نمبر"
+                  placeholder="ادخل السيريال نمبر"
                   value={serialNumber}
                   onChange={(e) => setSerialNumber(e.target.value)}
-                  className={`w-full px-3 py-2 text-sm font-mono rounded-xl border outline-none focus:border-blue-500 ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
+                  className="w-full px-4 py-3 text-base font-black font-mono rounded border-2 border-solid border-black bg-white text-blue-900 placeholder:text-blue-900/70 outline-none focus:border-blue-900 shadow-sm"
                 />
               </div>
             ) : (
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-400">رقم اللوحة والترميز:</label>
+                <label className="block text-base font-black text-black">رقم اللوحة والترميز:</label>
                 <input
                   type="text"
                   placeholder="مثال: أ ب ج 1234"
                   value={plateNumber}
                   onChange={(e) => setPlateNumber(e.target.value)}
-                  className={`w-full px-3 py-2 text-sm rounded-xl border outline-none focus:border-blue-500 ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
+                  className="w-full px-4 py-3 text-base font-black rounded border-2 border-solid border-black bg-white text-blue-900 placeholder:text-blue-900/70 outline-none focus:border-blue-900 shadow-sm"
                 />
               </div>
             )}
 
-            {/* 🏗️ القائمة المنسدلة للمشاريع المستدعاة من قاعدة البيانات */}
+            {/* 🏗️ القائمة المنسدلة للمشاريع الحية - تم توضيح خطوطها وخلفيتها بالكامل */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-400">الموقع أو المشروع الحالي المبدئي:</label>
+              <label className="block text-base font-black text-black">الموقع أو المشروع الحالي المبدئي:</label>
               <select
                 value={currentProjectId}
                 onChange={(e) => setCurrentProjectId(e.target.value)}
-                className={`w-full px-3 py-2 text-sm rounded-xl border outline-none focus:border-blue-500 cursor-pointer ${
-                  isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
-                }`}
+                className="w-full px-4 py-3 text-base font-black rounded border-2 border-solid border-black bg-white text-black outline-none focus:border-blue-900 shadow-sm cursor-pointer"
               >
-                <option value="">📍 الورشة الرئيسية (بدون مشروع)</option>
+                <option value="" className="font-black text-black">📍 الورشة الرئيسية (بدون مشروع)</option>
                 {projectsList.map((project) => (
-                  <option key={project.id} value={project.id}>
+                  <option key={project.id} value={project.id} className="font-black text-black">
                     🚧 {project.name}
                   </option>
                 ))}
@@ -219,9 +208,9 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
             </div>
           </div>
 
-          {/* 📸 قسم حقول روابط الصور (تجهيزاً لربط كلاودنري لاحقاً) */}
-          <div className="p-4 rounded-xl border border-dashed border-slate-500/20 space-y-3 bg-slate-500/5">
-            <span className="text-xs font-black text-amber-500 block">🖼️ روابط صور الآلية (اختياري):</span>
+          {/* 📸 قسم حقول روابط الصور الاختيارية - حدود واضحة تمنع الاختفاء في الشمس */}
+          <div className="p-4 rounded-lg border-2 border-dashed border-black bg-blue-50/50 space-y-3">
+            <span className="text-base font-black text-blue-900 block">🖼️ روابط صور الآلية (اختياري):</span>
             
             <div className="space-y-2">
               <input
@@ -229,31 +218,41 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
                 placeholder="رابط الصورة الأمامية للمعدة (Cloudinary URL)"
                 value={frontImageUrl}
                 onChange={(e) => setFrontImageUrl(e.target.value)}
-                className={`w-full px-3 py-1.5 text-xs rounded-lg border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}
+                className="w-full px-4 py-2.5 text-sm font-black rounded border-2 border-solid border-black bg-white text-blue-900 placeholder:text-blue-900/70 outline-none focus:border-blue-900"
               />
               <input
                 type="text"
                 placeholder="رابط الصورة الخلفية للمعدة (Cloudinary URL)"
                 value={backImageUrl}
                 onChange={(e) => setBackImageUrl(e.target.value)}
-                className={`w-full px-3 py-1.5 text-xs rounded-lg border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}
+                className="w-full px-4 py-2.5 text-sm font-black rounded border-2 border-solid border-black bg-white text-blue-900 placeholder:text-blue-900/70 outline-none focus:border-blue-900"
               />
               <input
                 type="text"
                 placeholder="رابط صورة كود/لوحة المعدة (Cloudinary URL)"
                 value={codeImageUrl}
                 onChange={(e) => setCodeImageUrl(e.target.value)}
-                className={`w-full px-3 py-1.5 text-xs rounded-lg border outline-none ${isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200'}`}
+                className="w-full px-4 py-2.5 text-sm font-black rounded border-2 border-solid border-black bg-white text-blue-900 placeholder:text-blue-900/70 outline-none focus:border-blue-900"
               />
             </div>
           </div>
 
-          <div className="pt-4 border-t border-slate-500/10 flex justify-end gap-3 items-center">
-            <button type="button" onClick={onClose} disabled={submitting} className="text-xs font-bold text-slate-400 bg-transparent border-0 cursor-pointer">
+          {/* أزرار التحكم والاعتماد السفلي */}
+          <div className="pt-4 border-t-4 border-solid border-black flex justify-end gap-4 items-center">
+            <button 
+              type="button" 
+              onClick={onClose} 
+              disabled={submitting} 
+              className="text-base font-black text-black bg-transparent border-0 cursor-pointer hover:underline px-2 py-1"
+            >
               إلغاء الأمر
             </button>
-            <button type="submit" disabled={submitting} className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-6 py-2.5 rounded-xl shadow-md border-0 cursor-pointer">
-              {submitting ? 'جاري الحفظ والربط...' : '💾 تثبيت الآلية في قاعدة البيانات'}
+            <button 
+              type="submit" 
+              disabled={submitting} 
+              className="bg-blue-900 hover:bg-blue-950 text-white font-black text-base px-8 py-3 rounded-lg border-2 border-solid border-black cursor-pointer shadow-md transition-all active:scale-95"
+            >
+              {submitting ? 'جاري الحفظ والربط حالياً...' : '💾 تثبيت الآلية في قاعدة البيانات'}
             </button>
           </div>
 
