@@ -6,31 +6,20 @@ import { eq, desc } from 'drizzle-orm';
 
 const router = Router();
 
-// 1. تسجيل بلاغ عطل جديد ("تعطلت") مع أخذ لقطة للمشروع الحالي تلقائياً
-// POST /api/maintenance/breakdown
+// 1. تسجيل بلاغ عطل جديد ("تعطلت")
 router.post('/breakdown', async (req, res) => {
   try {
     const { equipmentId, breakdownDate, details } = req.body;
-
-    if (!equipmentId || !breakdownDate) {
-      return res.status(400).json({ error: 'معرف الآلية وتاريخ العطل حقول مطلوبة' });
-    }
+    if (!equipmentId || !breakdownDate) return res.status(400).json({ error: 'معرف الآلية وتاريخ العطل حقول مطلوبة' });
 
     const targetEquipment = await db
-      .select({
-        id: equipment.id,
-        currentProjectId: equipment.currentProjectId,
-        projectName: projects.name,
-      })
+      .select({ id: equipment.id, currentProjectId: equipment.currentProjectId, projectName: projects.name })
       .from(equipment)
       .leftJoin(projects, eq(equipment.currentProjectId, projects.id))
       .where(eq(equipment.id, Number(equipmentId)))
       .limit(1);
 
-    if (targetEquipment.length === 0) {
-      return res.status(404).json({ error: 'الآلية غير موجودة بالنظام' });
-    }
-
+    if (targetEquipment.length === 0) return res.status(404).json({ error: 'الآلية غير موجودة بالنظام' });
     const currentProjectName = targetEquipment[0].projectName || 'خارج المشاريع / الورشة المركزية';
 
     const newLog = await db.insert(maintenanceLogs).values({
@@ -41,11 +30,7 @@ router.post('/breakdown', async (req, res) => {
       status: 'broken',
     }).returning();
 
-    await db
-      .update(equipment)
-      .set({ status: 'broken' })
-      .where(eq(equipment.id, Number(equipmentId)));
-
+    await db.update(equipment).set({ status: 'broken' }).where(eq(equipment.id, Number(equipmentId)));
     return res.status(201).json({ success: true, log: newLog[0] });
   } catch (error) {
     console.error('Error logging breakdown:', error);
@@ -54,34 +39,19 @@ router.post('/breakdown', async (req, res) => {
 });
 
 // 2. إغلاق بلاغ العطل وتحديد تاريخ الجاهزية ("تم الإصلاح")
-// PUT /api/maintenance/repair/:logId
 router.put('/repair/:logId', async (req, res) => {
   try {
     const { logId } = req.params;
     const { repairDate } = req.body;
+    if (!repairDate) return res.status(400).json({ error: 'تاريخ الإصلاح مطلوب' });
 
-    if (!repairDate) {
-      return res.status(400).json({ error: 'تاريخ الإصلاح والجاهزية مطلوب' });
-    }
+    const updatedLog = await db.update(maintenanceLogs)
+      .set({ repairDate: new Date(repairDate), status: 'repaired' })
+      .where(eq(maintenanceLogs.id, Number(logId))).returning();
 
-    const updatedLog = await db
-      .update(maintenanceLogs)
-      .set({
-        repairDate: new Date(repairDate),
-        status: 'repaired',
-      })
-      .where(eq(maintenanceLogs.id, Number(logId)))
-      .returning();
+    if (updatedLog.length === 0) return res.status(404).json({ error: 'سجل العطل غير موجود' });
 
-    if (updatedLog.length === 0) {
-      return res.status(404).json({ error: 'سجل العطل غير موجود' });
-    }
-
-    await db
-      .update(equipment)
-      .set({ status: 'available' })
-      .where(eq(equipment.id, updatedLog[0].equipmentId));
-
+    await db.update(equipment).set({ status: 'available' }).where(eq(equipment.id, updatedLog[0].equipmentId));
     return res.status(200).json({ success: true, log: updatedLog[0] });
   } catch (error) {
     console.error('Error closing maintenance log:', error);
@@ -89,97 +59,52 @@ router.put('/repair/:logId', async (req, res) => {
   }
 });
 
-// 3. جلب التاريخ الصيانة الكامل لآلية معينة (يظهر داخل بروفايل المعدة)
-// GET /api/maintenance/history/:equipmentId
+// 3. جلب التاريخ الصيانة الكامل لآلية معينة
 router.get('/history/:equipmentId', async (req, res) => {
   try {
     const { equipmentId } = req.params;
-
-    const history = await db
-      .select()
-      .from(maintenanceLogs)
+    const history = await db.select().from(maintenanceLogs)
       .where(eq(maintenanceLogs.equipmentId, Number(equipmentId)))
       .orderBy(desc(maintenanceLogs.breakdownDate));
-
     return res.status(200).json(history);
   } catch (error) {
-    console.error('Error fetching maintenance history:', error);
     return res.status(500).json({ error: 'فشل في جلب سجلات صيانة المعدة' });
   }
 });
 
-// 4. جلب تقرير شامل وموحد لجميع الأعطال لصفحة التقارير الفنية
-// GET /api/maintenance/reports/all
+// 4. جلب تقرير شامل لجميع الأعطال
 router.get('/reports/all', async (req, res) => {
   try {
-    const records = await db
-      .select({
-        id: maintenanceLogs.id,
-        equipmentId: maintenanceLogs.equipmentId,
-        equipmentCode: equipment.code,
-        equipmentName: equipment.name,
-        equipmentType: equipment.type,
-        serialNumber: equipment.serialNumber,
-        plateNumber: equipment.plateNumber,
-        breakdownDate: maintenanceLogs.breakdownDate,
-        repairDate: maintenanceLogs.repairDate,
-        details: maintenanceLogs.details,
-        projectNameSnapshot: maintenanceLogs.projectNameSnapshot,
-      })
-      .from(maintenanceLogs)
-      .innerJoin(equipment, eq(maintenanceLogs.equipmentId, equipment.id))
-      .orderBy(desc(maintenanceLogs.breakdownDate));
-
+    const records = await db.select({
+      id: maintenanceLogs.id, equipmentId: maintenanceLogs.equipmentId, equipmentCode: equipment.code,
+      equipmentName: equipment.name, equipmentType: equipment.type, serialNumber: equipment.serialNumber,
+      plateNumber: equipment.plateNumber, breakdownDate: maintenanceLogs.breakdownDate,
+      repairDate: maintenanceLogs.repairDate, details: maintenanceLogs.details, projectNameSnapshot: maintenanceLogs.projectNameSnapshot,
+    }).from(maintenanceLogs).innerJoin(equipment, eq(maintenanceLogs.equipmentId, equipment.id)).orderBy(desc(maintenanceLogs.breakdownDate));
     return res.status(200).json(records);
   } catch (error) {
-    console.error('Error fetching comprehensive report data:', error);
-    return res.status(500).json({ error: 'فشل في توليد بيانات التقارير الموحدة' });
+    return res.status(500).json({ error: 'فشل في توليد بيانات التقارير' });
   }
 });
 
-// 5. تعديل شامل لبيانات سجل عطل/صيانة معين لتصحيح الأخطاء البشرية
-// PUT /api/maintenance/logs/:logId
+// 5. تعديل شامل لبيانات سجل عطل/صيانة معين
 router.put('/logs/:logId', async (req, res) => {
   try {
     const { logId } = req.params;
     const { breakdownDate, repairDate, details } = req.body;
+    if (!breakdownDate) return res.status(400).json({ error: 'تاريخ العطل مطلوب' });
 
-    if (!breakdownDate) {
-      return res.status(400).json({ error: 'تاريخ العطل حقل إجبارى لتحديث السجل' });
-    }
+    const updateData: any = { breakdownDate: new Date(breakdownDate), details: details ? details.trim() : null };
+    if (repairDate) { updateData.repairDate = new Date(repairDate); updateData.status = 'repaired'; }
+    else { updateData.repairDate = null; updateData.status = 'broken'; }
 
-    const updateData: any = {
-      breakdownDate: new Date(breakdownDate),
-      details: details ? details.trim() : null,
-    };
+    const updatedRecord = await db.update(maintenanceLogs).set(updateData).where(eq(maintenanceLogs.id, Number(logId))).returning();
+    if (updatedRecord.length === 0) return res.status(404).json({ error: 'السجل غير موجود' });
 
-    if (repairDate) {
-      updateData.repairDate = new Date(repairDate);
-      updateData.status = 'repaired'; 
-    } else {
-      updateData.repairDate = null;
-      updateData.status = 'broken'; 
-    }
-
-    const updatedRecord = await db
-      .update(maintenanceLogs)
-      .set(updateData)
-      .where(eq(maintenanceLogs.id, Number(logId)))
-      .returning();
-
-    if (updatedRecord.length === 0) {
-      return res.status(404).json({ error: 'سجل الصيانة المطلوب غير موجود بالنظام' });
-    }
-
-    await db
-      .update(equipment)
-      .set({ status: updateData.status })
-      .where(eq(equipment.id, updatedRecord[0].equipmentId));
-
+    await db.update(equipment).set({ status: updateData.status }).where(eq(equipment.id, updatedRecord[0].equipmentId));
     return res.status(200).json({ success: true, log: updatedRecord[0] });
   } catch (error) {
-    console.error('Error updating maintenance log:', error);
-    return res.status(500).json({ error: 'حدث خطأ داخلي أثناء تعديل سجل الصيانة' });
+    return res.status(500).json({ error: 'حدث خطأ داخلي' });
   }
 });
 
@@ -188,10 +113,7 @@ router.put('/logs/:logId', async (req, res) => {
 router.post('/ai-chat', async (req, res) => {
   try {
     const { message } = req.body;
-
-    if (!message) {
-      return res.status(400).json({ success: false, error: 'الرسالة فارغة' });
-    }
+    if (!message) return res.status(400).json({ success: false, error: 'الرسالة فارغة' });
 
     const fleetData = await db.select({ code: equipment.code, name: equipment.name, status: equipment.status, type: equipment.type }).from(equipment);
     const logsData = await db.select({ code: equipment.code, name: equipment.name, breakdown: maintenanceLogs.breakdownDate, repair: maintenanceLogs.repairDate, details: maintenanceLogs.details, project: maintenanceLogs.projectNameSnapshot }).from(maintenanceLogs).innerJoin(equipment, eq(maintenanceLogs.equipmentId, equipment.id));
@@ -199,25 +121,19 @@ router.post('/ai-chat', async (req, res) => {
     const systemInstruction = `
       أنت "المستشار الفني الذكي" الرسمي لنظام صيانة المعدات والمركبات في (شركة وادي دفا للمقاولات).
       مهمتك الصارمة والمحددة هي الإجابة على أسئلة مسؤول الصيانة ومساعدته في حصر وتحليل الأعطال بناءً على البيانات الحية المرفقة أدناه فقط.
-
-      قواعد التعامل والنطاق الجوهري (Strict Scope):
-      1. خاطب المستخدم دائماً بلقب هندسي محترم وجاد: "يا هندسة".
-      2. أسلوبك يجب أن يكون مهنياً، ومباشراً جداً، مدعماً بالأرقام والإحصائيات، دون لف أو دوران أو مقدمات إنشائية غير مفيدة.
-      3. موضوع الفنيين وتوزيع العمال والورش الخارجية خارج تماماً عن صلاحيات نظامنا؛ إذا سألك عنها نبهه بلطف أن النظام محصور في حصر الآليات والتقارير الفنية والمالية للأعطال.
+      خاطب المستخدم دائماً بلقب هندسي محترم: "يا هندسة". أسلوبك يجب أن يكون مهنياً، ومباشراً جداً، مدعماً بالأرقام والإحصائيات.
 
       البيانات الحية الفورية من قاعدة البيانات حالياً:
-      - الأسطول الميداني الحالي (المعدات والمركبات): ${JSON.stringify(fleetData)}
-      - سجل بلاغات الأعطال والصيانة التاريخي بالكامل: ${JSON.stringify(logsData)}
+      - الأسطول: ${JSON.stringify(fleetData)}
+      - سجل الأعطال: ${JSON.stringify(logsData)}
     `;
 
     const apiKey = process.env.GEMINI_API_KEY || '';
     
-    // 🎯 التعديل القاطع المضمون: تم تحويل الرابط إلى v1 المستقر والنهائي لقفل الـ 404 للأبد!
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    // 🎯 استخدام الموديل الكلاسيكي المفتوح للجميع مجاناً لكسر جدار الـ 404 للأبد
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{
           parts: [{ text: `${systemInstruction}\n\nUser Question: ${message}` }]
@@ -234,16 +150,10 @@ router.post('/ai-chat', async (req, res) => {
     const data = await response.json();
     const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || "لم أتمكن من استخراج الإجابة الفنية، يرجى المحاولة مرة أخرى.";
 
-    return res.json({
-      success: true,
-      reply: replyText,
-    });
+    return res.json({ success: true, reply: replyText });
   } catch (error) {
     console.error('Gemini API Error:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'عذراً يا هندسة، فشل سيرفر الذكاء الاصطناعي في معالجة وتحليل البيانات الحالية بسبب خطأ داخلي.',
-    });
+    return res.status(500).json({ success: false, error: 'عذراً يا هندسة، فشل سيرفر الذكاء الاصطناعي في معالجة البيانات.' });
   }
 });
 
