@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { maintenanceLogs, equipment, projects } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
-import { GoogleGenAI } from '@google/generative-ai'; // استيراد المكتبة الرسمية بنجاح
+import { GoogleGenAI } from '@google/generative-ai'; // 🛠️ تم تصحيح الاستيراد للكلاس القياسي الصحيح
 
 const router = Router();
 
@@ -115,7 +115,7 @@ router.get('/history/:equipmentId', async (req, res) => {
   }
 });
 
-// 4. جلب تقرير شامل وموحد لجميع الأعطال لصفحة التقارير الفنية (الراوت الجديد والمطابق للجدول الإداري)
+// 4. جلب تقرير شامل وموحد لجميع الأعطال لصفحة التقارير الفنية (الرايت الجديد والمطابق للجدول الإداري)
 // GET /api/maintenance/reports/all
 router.get('/reports/all', async (req, res) => {
   try {
@@ -207,9 +207,9 @@ router.post('/ai-chat', async (req, res) => {
     const fleetData = await db.select({ code: equipment.code, name: equipment.name, status: equipment.status, type: equipment.type }).from(equipment);
     const logsData = await db.select({ code: equipment.code, name: equipment.name, breakdown: maintenanceLogs.breakdownDate, repair: maintenanceLogs.repairDate, details: maintenanceLogs.details, project: maintenanceLogs.projectNameSnapshot }).from(maintenanceLogs).innerJoin(equipment, eq(maintenanceLogs.equipmentId, equipment.id));
 
-    // ب) تهيئة مكتبة جيمني بالطريقة المباشرة الصحيحة لنسخة (0.24.1) بتمريـر المفتاح مباشرة
-    const ai = new GoogleGenAI(process.env.GEMINI_API_KEY || '');
-    const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // ب) التهيئة الرسمية الصارمة لـ Node.js باستخدام كلاس GoogleGenAI المستورد بنجاح
+    const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     // 🎯 توجيه جيمني الصارم ليلتزم ببيانات وهوية الشركة
     const systemInstruction = `
@@ -227,7 +227,9 @@ router.post('/ai-chat', async (req, res) => {
     `;
 
     // ج) توليد الإجابة وإرسالها للفرونت إند
-    const result = await model.generateContent([systemInstruction, message]);
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: systemInstruction + "\n\nUser Question: " + message }] }]
+    });
     const replyText = result.response.text;
 
     return res.json({
