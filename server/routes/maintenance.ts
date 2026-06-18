@@ -16,7 +16,6 @@ router.post('/breakdown', async (req, res) => {
       return res.status(400).json({ error: 'معرف الآلية وتاريخ العطل حقول مطلوبة' });
     }
 
-    // جلب بيانات الآلية مع اسم مشروعها الحالي لأخذ اللقطة التاريخية
     const targetEquipment = await db
       .select({
         id: equipment.id,
@@ -34,7 +33,6 @@ router.post('/breakdown', async (req, res) => {
 
     const currentProjectName = targetEquipment[0].projectName || 'خارج المشاريع / الورشة المركزية';
 
-    // أ) إنشاء سجل العطل الجديد
     const newLog = await db.insert(maintenanceLogs).values({
       equipmentId: Number(equipmentId),
       projectNameSnapshot: currentProjectName,
@@ -43,7 +41,6 @@ router.post('/breakdown', async (req, res) => {
       status: 'broken',
     }).returning();
 
-    // ب) تحديث حالة المعدة نفسها في جدول الأسطول لتصبح متعطلة
     await db
       .update(equipment)
       .set({ status: 'broken' })
@@ -67,7 +64,6 @@ router.put('/repair/:logId', async (req, res) => {
       return res.status(400).json({ error: 'تاريخ الإصلاح والجاهزية مطلوب' });
     }
 
-    // أ) تحديث سجل العطل وإغلاقه
     const updatedLog = await db
       .update(maintenanceLogs)
       .set({
@@ -81,7 +77,6 @@ router.put('/repair/:logId', async (req, res) => {
       return res.status(404).json({ error: 'سجل العطل غير موجود' });
     }
 
-    // ب) إعادة حالة المعدة المرتبطة لتصبح جاهزة (available) تلقائياً
     await db
       .update(equipment)
       .set({ status: 'available' })
@@ -188,7 +183,7 @@ router.put('/logs/:logId', async (req, res) => {
   }
 });
 
-// 🤖 6. مسار استقبال محادثات المستشار الذكي لشركة وادي دفا (باستخدام المكاملة المباشرة والمضمونة)
+// 🤖 6. مسار استقبال محادثات المستشار الذكي لشركة وادي دفا
 // POST /api/maintenance/ai-chat
 router.post('/ai-chat', async (req, res) => {
   try {
@@ -198,11 +193,9 @@ router.post('/ai-chat', async (req, res) => {
       return res.status(400).json({ success: false, error: 'الرسالة فارغة' });
     }
 
-    // أ) جلب لقطة حية وفورية من قاعدة البيانات لأسطول شركة وادي دفا
     const fleetData = await db.select({ code: equipment.code, name: equipment.name, status: equipment.status, type: equipment.type }).from(equipment);
     const logsData = await db.select({ code: equipment.code, name: equipment.name, breakdown: maintenanceLogs.breakdownDate, repair: maintenanceLogs.repairDate, details: maintenanceLogs.details, project: maintenanceLogs.projectNameSnapshot }).from(maintenanceLogs).innerJoin(equipment, eq(maintenanceLogs.equipmentId, equipment.id));
 
-    // ب) إعداد التعليمات الصارمة والبيانات الحية المدمجة
     const systemInstruction = `
       أنت "المستشار الفني الذكي" الرسمي لنظام صيانة المعدات والمركبات في (شركة وادي دفا للمقاولات).
       مهمتك الصارمة والمحددة هي الإجابة على أسئلة مسؤول الصيانة ومساعدته في حصر وتحليل الأعطال بناءً على البيانات الحية المرفقة أدناه فقط.
@@ -217,9 +210,10 @@ router.post('/ai-chat', async (req, res) => {
       - سجل بلاغات الأعطال والصيانة التاريخي بالكامل: ${JSON.stringify(logsData)}
     `;
 
-    // 🎯 ج) الربط الفوري والمباشر مع خوادم جوجل لضمان تخطي مشاكل الحزم القديمة على Render
     const apiKey = process.env.GEMINI_API_KEY || '';
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    
+    // 🎯 التعديل القاطع المضمون: تم تحويل الرابط إلى v1 المستقر والنهائي لقفل الـ 404 للأبد!
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
