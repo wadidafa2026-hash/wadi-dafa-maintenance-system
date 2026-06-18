@@ -130,8 +130,8 @@ router.post('/ai-chat', async (req, res) => {
 
     const apiKey = process.env.GEMINI_API_KEY || '';
     
-    // 🎯 استخدام الموديل الكلاسيكي المفتوح للجميع مجاناً لكسر جدار الـ 404 للأبد
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+    // 🎯 تم تعديل الرابط للموديل المستقر والسريع والنظيف تماماً من الـ 404
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
