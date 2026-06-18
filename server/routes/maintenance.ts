@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { maintenanceLogs, equipment, projects } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
-import { GoogleGenAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/generative-ai'; // استيراد المكتبة الرسمية بنجاح
 
 const router = Router();
 
@@ -207,8 +207,8 @@ router.post('/ai-chat', async (req, res) => {
     const fleetData = await db.select({ code: equipment.code, name: equipment.name, status: equipment.status, type: equipment.type }).from(equipment);
     const logsData = await db.select({ code: equipment.code, name: equipment.name, breakdown: maintenanceLogs.breakdownDate, repair: maintenanceLogs.repairDate, details: maintenanceLogs.details, project: maintenanceLogs.projectNameSnapshot }).from(maintenanceLogs).innerJoin(equipment, eq(maintenanceLogs.equipmentId, equipment.id));
 
-    // ب) تهيئة مكتبة جيمني باستخدام المفتاح المرفق بالبيئة
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+    // ب) تهيئة مكتبة جيمني بالطريقة المباشرة الصحيحة لنسخة (0.24.1) بتمريـر المفتاح مباشرة
+    const ai = new GoogleGenAI(process.env.GEMINI_API_KEY || '');
     const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     // 🎯 توجيه جيمني الصارم ليلتزم ببيانات وهوية الشركة
