@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { maintenanceLogs, equipment, projects } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
-import * as GoogleAI from '@google/generative-ai'; // 🔍 استيراد الحزمة كاملة كـ كائن لتحليل محتوياتها هندسياً
+import { GoogleGenerativeAI } from '@google/generative-ai'; // ✅ الاستيراد الصحيح والمطابق للموجود في السيرفر حالياً
 
 const router = Router();
 
@@ -203,23 +203,13 @@ router.post('/ai-chat', async (req, res) => {
       return res.status(400).json({ success: false, error: 'الرسالة فارغة' });
     }
 
-    // 🔍 خطوة الفحص والتحليل الجذري: طباعة محتويات المكتبة لمعرفة المتاح فعلياً في السيرفر
-    console.log("--- [تحليل هندسي] محتويات مكتبة جيمني المتاحة حالياً على السيرفر: ---");
-    console.log(Object.keys(GoogleAI));
-
     // أ) سحب لقطة حية وفورية من قاعدة البيانات لضمان دقة معلومات جيمني
     const fleetData = await db.select({ code: equipment.code, name: equipment.name, status: equipment.status, type: equipment.type }).from(equipment);
     const logsData = await db.select({ code: equipment.code, name: equipment.name, breakdown: maintenanceLogs.breakdownDate, repair: maintenanceLogs.repairDate, details: maintenanceLogs.details, project: maintenanceLogs.projectNameSnapshot }).from(maintenanceLogs).innerJoin(equipment, eq(maintenanceLogs.equipmentId, equipment.id));
 
-    // ب) تهيئة ديناميكية مرنة للـ Constructor بناءً على المتاح في المكتبة (سواء كان الكلاس القديم أو الحديث)
-    const TargetConstructor = (GoogleAI as any).GoogleGenAI || (GoogleAI as any).GoogleGenAI;
-    
-    if (!TargetConstructor) {
-      throw new TypeError("لم يتم العثور على كلاس التهيئة المناسب داخل حزمة @google/generative-ai");
-    }
-
-    const aiInstance = new TargetConstructor(process.env.GEMINI_API_KEY || '');
-    const model = aiInstance.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // ب) التهيئة الرسمية المبنية على قراءة سجل السيرفر الصريحة
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     // 🎯 توجيه جيمني الصارم ليلتزم ببيانات وهوية الشركة
     const systemInstruction = `
@@ -236,8 +226,10 @@ router.post('/ai-chat', async (req, res) => {
       - سجل بلاغات الأعطال والصيانة التاريخي بالكامل: ${JSON.stringify(logsData)}
     `;
 
-    // ج) توليد الإجابة وإرسالها للفرونت إند
-    const result = await model.generateContent([systemInstruction, message]);
+    // ج) توليد الإجابة وإرسالها للفرونت إند مع دمج التوجيهات والسؤال بالشكل القياسي للمكتبة المستقرة
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: systemInstruction + "\n\nUser Question: " + message }] }]
+    });
     const replyText = result.response.text;
 
     return res.json({
