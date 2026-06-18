@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { maintenanceLogs, equipment, projects } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
+import { GoogleGenAI } from '@google/generative-ai';
 
 const router = Router();
 
@@ -189,6 +190,56 @@ router.put('/logs/:logId', async (req, res) => {
   } catch (error) {
     console.error('Error updating maintenance log:', error);
     return res.status(500).json({ error: 'حدث خطأ داخلي أثناء تعديل سجل الصيانة' });
+  }
+});
+
+// 🤖 6. مسار استقبال محادثات المستشار الذكي لشركة وادي دفا وجلب البيانات حياً من قاعدة البيانات
+// POST /api/maintenance/ai-chat
+router.post('/ai-chat', async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message) {
+      return res.status(400).json({ success: false, error: 'الرسالة فارغة' });
+    }
+
+    // أ) سحب لقطة حية وفورية من قاعدة البيانات لضمان دقة معلومات جيمني
+    const fleetData = await db.select({ code: equipment.code, name: equipment.name, status: equipment.status, type: equipment.type }).from(equipment);
+    const logsData = await db.select({ code: equipment.code, name: equipment.name, breakdown: maintenanceLogs.breakdownDate, repair: maintenanceLogs.repairDate, details: maintenanceLogs.details, project: maintenanceLogs.projectNameSnapshot }).from(maintenanceLogs).innerJoin(equipment, eq(maintenanceLogs.equipmentId, equipment.id));
+
+    // ب) تهيئة مكتبة جيمني باستخدام المفتاح المرفق بالبيئة
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+    const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+    // 🎯 توجيه جيمني الصارم ليلتزم ببيانات وهوية الشركة
+    const systemInstruction = `
+      أنت "المستشار الفني الذكي" الرسمي لنظام صيانة المعدات والمركبات في (شركة وادي دفا للمقاولات).
+      مهمتك الصارمة والمحددة هي الإجابة على أسئلة مسؤول الصيانة ومساعدته في حصر وتحليل الأعطال بناءً على البيانات الحية المرفقة أدناه فقط.
+
+      قواعد التعامل والنطاق الجوهري (Strict Scope):
+      1. خاطب المستخدم دائماً بلقب هندسي محترم وجاد: "يا هندسة".
+      2. أسلوبك يجب أن يكون مهنياً، ومباشراً جداً، مدعماً بالأرقام والإحصائيات، دون لف أو دوران أو مقدمات إنشائية غير مفيدة.
+      3. موضوع الفنيين وتوزيع العمال والورش الخارجية خارج تماماً عن صلاحيات نظامنا؛ إذا سألك عنها نبهه بلطف أن النظام محصور في حصر الآليات والتقارير الفنية والمالية للأعطال.
+
+      البيانات الحية الفورية من قاعدة البيانات حالياً:
+      - الأسطول الميداني الحالي (المعدات والمركبات): ${JSON.stringify(fleetData)}
+      - سجل بلاغات الأعطال والصيانة التاريخي بالكامل: ${JSON.stringify(logsData)}
+    `;
+
+    // ج) توليد الإجابة وإرسالها للفرونت إند
+    const result = await model.generateContent([systemInstruction, message]);
+    const replyText = result.response.text;
+
+    return res.json({
+      success: true,
+      reply: replyText,
+    });
+  } catch (error) {
+    console.error('Gemini API Error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'عذراً يا هندسة، فشل سيرفر الذكاء الاصطناعي في معالجة وتحليل البيانات الحالية.',
+    });
   }
 });
 

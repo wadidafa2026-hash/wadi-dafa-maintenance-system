@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Fleet } from './Fleet';
 import { Reports } from './Reports';
 import { Profile } from './Profile';
+import { AiChat } from './AiChat'; // ➕ استيراد صفحة الشات المستقلة التي أنشأتها
 
 interface DashboardProps {
   user: { id: number; name: string; username: string; role: 'super_admin' | 'sub_admin' | 'viewer' };
@@ -10,7 +11,8 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
-  const [currentView, setCurrentView] = useState<'hub' | 'fleet' | 'reports' | 'profile'>('hub');
+  // ⚙️ تم تحديث الحالة لتدعم التوجيه لصفحة الذكاء الاصطناعي الجديدة 'ai_chat'
+  const [currentView, setCurrentView] = useState<'hub' | 'fleet' | 'reports' | 'profile' | 'ai_chat'>('hub');
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   return (
@@ -100,14 +102,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 </div>
               </button>
 
+              {/* ➕ بطاقة المستشار الفني والمحلل الذكي الجديدة (تمت إضافتها هندسياً هنا) */}
+              <button 
+                onClick={() => setCurrentView('ai_chat')} 
+                className={`w-full text-right p-6 md:p-8 rounded-xl border border-solid transition-all transform hover:-translate-y-0.5 flex items-center justify-between group cursor-pointer ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white hover:border-slate-700' : 'bg-white border-slate-200 text-slate-900 shadow-sm hover:border-slate-300'}`}
+              >
+                <div className="space-y-2">
+                  <h3 className={`text-lg md:text-xl font-bold m-0 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                    🤖 المستشار الفني والمحلل الذكي (AI)
+                  </h3>
+                  <p className={`text-xs md:text-sm font-normal m-0 leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                    مساحة مستقلة كاملة للدردشة التفاعلية مع الذكاء الاصطناعي لحصر الأعطال المتكررة، تلخيص البيانات، وتوليد التقارير الميدانية فورياً.
+                  </p>
+                </div>
+              </button>
+
             </div>
           </div>
         )}
 
-        {/* عرض المكونات الفرعية بناءً على التوجيه */}
+        {/* عرض المكونات الفرعية بناءً على التوجيه المحدث */}
         {currentView === 'fleet' && <Fleet isDarkMode={isDarkMode} userRole={user.role} />}
         {currentView === 'reports' && <Reports isDarkMode={isDarkMode} />}
         {currentView === 'profile' && <Profile user={user} isDarkMode={isDarkMode} />}
+        {currentView === 'ai_chat' && <AiChat isDarkMode={isDarkMode} />} {/* ➕ عرض صفحة الشات */}
 
       </main>
     </div>
