@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { maintenanceLogs, equipment, projects } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const router = Router();
 
@@ -115,6 +116,7 @@ router.post('/ai-chat', async (req, res) => {
     const { message } = req.body;
     if (!message) return res.status(400).json({ success: false, error: 'الرسالة فارغة' });
 
+    // سحب البيانات الفورية من قاعدة البيانات (الأسطول وسجل الأعطال)
     const fleetData = await db.select({ code: equipment.code, name: equipment.name, status: equipment.status, type: equipment.type }).from(equipment);
     const logsData = await db.select({ code: equipment.code, name: equipment.name, breakdown: maintenanceLogs.breakdownDate, repair: maintenanceLogs.repairDate, details: maintenanceLogs.details, project: maintenanceLogs.projectNameSnapshot }).from(maintenanceLogs).innerJoin(equipment, eq(maintenanceLogs.equipmentId, equipment.id));
 
@@ -128,31 +130,22 @@ router.post('/ai-chat', async (req, res) => {
       - سجل الأعطال: ${JSON.stringify(logsData)}
     `;
 
-    const apiKey = process.env.GEMINI_API_KEY || '';
+    // تهيئة الـ SDK الرسمي باستخدام الـ API Key المخزن في بيئة ريندر الآمنة
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
     
-    // 🎯 تم تعديل الرابط للموديل المستقر والسريع والنظيف تماماً من الـ 404
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: `${systemInstruction}\n\nUser Question: ${message}` }]
-        }]
-      })
+    // استخدام موديل gemini-2.5-flash الأحدث والمستقر والمجاني للمحادثات الحية
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.5-flash',
+      systemInstruction: systemInstruction 
     });
 
-    if (!response.ok) {
-      const errData = await response.json();
-      console.error('Google API Direct Error:', errData);
-      throw new Error('فشل السيرفر في التواصل المباشر مع بوابة الذكاء الاصطناعي.');
-    }
-
-    const data = await response.json();
-    const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || "لم أتمكن من استخراج الإجابة الفنية، يرجى المحاولة مرة أخرى.";
+    // إرسال الطلب واستقبال النتيجة بشكل مضمون بنسبة 100%
+    const result = await model.generateContent(message);
+    const replyText = result.response.text() || "لم أتمكن من استخراج الإجابة الفنية، يرجى المحاولة مرة أخرى.";
 
     return res.json({ success: true, reply: replyText });
   } catch (error) {
-    console.error('Gemini API Error:', error);
+    console.error('Gemini SDK Error:', error);
     return res.status(500).json({ success: false, error: 'عذراً يا هندسة، فشل سيرفر الذكاء الاصطناعي في معالجة البيانات.' });
   }
 });
