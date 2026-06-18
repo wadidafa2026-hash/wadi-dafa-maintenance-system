@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { maintenanceLogs, equipment, projects } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
-import { GoogleGenerativeAI } from '@google/generative-ai'; // ✅ الاستيراد الصحيح والمطابق للموجود في السيرفر حالياً
+import { GoogleGenerativeAI } from '@google/generative-ai'; // الكلاس المعتمد والمثبت في السيرفر
 
 const router = Router();
 
@@ -17,7 +17,6 @@ router.post('/breakdown', async (req, res) => {
       return res.status(400).json({ error: 'معرف الآلية وتاريخ العطل حقول مطلوبة' });
     }
 
-    // [خطوة ذكية] جلب بيانات الآلية مع اسم مشروعها الحالي لأخذ اللقطة التاريخية
     const targetEquipment = await db
       .select({
         id: equipment.id,
@@ -33,19 +32,16 @@ router.post('/breakdown', async (req, res) => {
       return res.status(404).json({ error: 'الآلية غير موجودة بالنظام' });
     }
 
-    // تحديد اسم المشروع للحفظ التاريخي (إذا لم تكن في مشروع يكتب: خارج المشاريع)
     const currentProjectName = targetEquipment[0].projectName || 'خارج المشاريع / الورشة المركزية';
 
-    // أ) إنشاء سجل العطل الجديد
     const newLog = await db.insert(maintenanceLogs).values({
       equipmentId: Number(equipmentId),
       projectNameSnapshot: currentProjectName,
-      breakdownDate: new Date(breakdownDate), // تحويل التاريخ القادم من التقويم لـ Date Object
+      breakdownDate: new Date(breakdownDate),
       details: details ? details.trim() : null,
-      status: 'broken', // الحالة الافتراضية للبلاغ: لسه متعطلة
+      status: 'broken',
     }).returning();
 
-    // ب) تحديث حالة المعدة نفسها في جدول الأسطول لتصبح متعطلة
     await db
       .update(equipment)
       .set({ status: 'broken' })
@@ -63,18 +59,17 @@ router.post('/breakdown', async (req, res) => {
 router.put('/repair/:logId', async (req, res) => {
   try {
     const { logId } = req.params;
-    const { repairDate } = req.body; // تاريخ الإصلاح المختار من التقويم في الفرونت إند
+    const { repairDate } = req.body;
 
     if (!repairDate) {
       return res.status(400).json({ error: 'تاريخ الإصلاح والجاهزية مطلوب' });
     }
 
-    // أ) تحديث سجل العطل وإغلاقه
     const updatedLog = await db
       .update(maintenanceLogs)
       .set({
         repairDate: new Date(repairDate),
-        status: 'repaired', // تم الإصلاح بنجاح
+        status: 'repaired',
       })
       .where(eq(maintenanceLogs.id, Number(logId)))
       .returning();
@@ -83,7 +78,6 @@ router.put('/repair/:logId', async (req, res) => {
       return res.status(404).json({ error: 'سجل العطل غير موجود' });
     }
 
-    // ب) إعادة حالة المعدة المرتبطة بهذا العطل لتصبح جاهزة (available) تلقائياً
     await db
       .update(equipment)
       .set({ status: 'available' })
@@ -106,7 +100,7 @@ router.get('/history/:equipmentId', async (req, res) => {
       .select()
       .from(maintenanceLogs)
       .where(eq(maintenanceLogs.equipmentId, Number(equipmentId)))
-      .orderBy(desc(maintenanceLogs.breakdownDate)); // ترتيب من الأحدث للأقدم حسب تاريخ العطل
+      .orderBy(desc(maintenanceLogs.breakdownDate));
 
     return res.status(200).json(history);
   } catch (error) {
@@ -115,7 +109,7 @@ router.get('/history/:equipmentId', async (req, res) => {
   }
 });
 
-// 4. جلب تقرير شامل وموحد لجميع الأعطال لصفحة التقارير الفنية (الراوت الجديد والمطابق للجدول الإداري)
+// 4. جلب تقرير شامل وموحد لجميع الأعطال لصفحة التقارير الفنية
 // GET /api/maintenance/reports/all
 router.get('/reports/all', async (req, res) => {
   try {
@@ -135,7 +129,7 @@ router.get('/reports/all', async (req, res) => {
       })
       .from(maintenanceLogs)
       .innerJoin(equipment, eq(maintenanceLogs.equipmentId, equipment.id))
-      .orderBy(desc(maintenanceLogs.breakdownDate)); // الترتيب التاريخي من الأحدث للأقدم
+      .orderBy(desc(maintenanceLogs.breakdownDate));
 
     return res.status(200).json(records);
   } catch (error) {
@@ -144,7 +138,7 @@ router.get('/reports/all', async (req, res) => {
   }
 });
 
-// 5. تعديل شامل لبيانات سجل عطل/صيانة معين لتصحيح الأخطاء البشرية قبل طباعة التقارير
+// 5. تعديل شامل لبيانات سجل عطل/صيانة معين لتصحيح الأخطاء البشرية
 // PUT /api/maintenance/logs/:logId
 router.put('/logs/:logId', async (req, res) => {
   try {
@@ -155,13 +149,11 @@ router.put('/logs/:logId', async (req, res) => {
       return res.status(400).json({ error: 'تاريخ العطل حقل إجبارى لتحديث السجل' });
     }
 
-    // تجهيز كائن التحديث بالتوافق مع السكيما وتحويل التواريخ القادمة من الفرونت إند لـ Date Objects
     const updateData: any = {
       breakdownDate: new Date(breakdownDate),
       details: details ? details.trim() : null,
     };
 
-    // إذا تم إرسال تاريخ إصلاح نقوم بتحويله وتغيير الحالة لـ repaired، وإلا تعود broken لفتح البلاغ مجدداً
     if (repairDate) {
       updateData.repairDate = new Date(repairDate);
       updateData.status = 'repaired'; 
@@ -180,7 +172,6 @@ router.put('/logs/:logId', async (req, res) => {
       return res.status(404).json({ error: 'سجل الصيانة المطلوب غير موجود بالنظام' });
     }
 
-    // مزامنة حالة المعدة الحقيقية في جدول الأسطول فوراً بناءً على حالة البلاغ المحدثة
     await db
       .update(equipment)
       .set({ status: updateData.status })
@@ -193,7 +184,7 @@ router.put('/logs/:logId', async (req, res) => {
   }
 });
 
-// 🤖 6. مسار استقبال محادثات المستشار الذكي لشركة وادي دفا وجلب البيانات حياً من قاعدة البيانات
+// 🤖 6. مسار استقبال محادثات المستشار الذكي لشركة وادي دفا
 // POST /api/maintenance/ai-chat
 router.post('/ai-chat', async (req, res) => {
   try {
@@ -203,15 +194,17 @@ router.post('/ai-chat', async (req, res) => {
       return res.status(400).json({ success: false, error: 'الرسالة فارغة' });
     }
 
-    // أ) سحب لقطة حية وفورية من قاعدة البيانات لضمان دقة معلومات جيمني
+    // أ) سحب لقطة حية وفورية من قاعدة البيانات
     const fleetData = await db.select({ code: equipment.code, name: equipment.name, status: equipment.status, type: equipment.type }).from(equipment);
     const logsData = await db.select({ code: equipment.code, name: equipment.name, breakdown: maintenanceLogs.breakdownDate, repair: maintenanceLogs.repairDate, details: maintenanceLogs.details, project: maintenanceLogs.projectNameSnapshot }).from(maintenanceLogs).innerJoin(equipment, eq(maintenanceLogs.equipmentId, equipment.id));
 
-    // ب) التهيئة الرسمية المبنية على قراءة سجل السيرفر الصريحة
+    // ب) التهيئة الرسمية للكلاس المتاح بالسيرفر
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    
+    // 🎯 التعديل الجوهري: استخدام تسمية الموديل المتوافقة مع إصدار v1beta المثبت بالسيرفر
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
-    // 🎯 توجيه جيمني الصارم ليلتزم ببيانات وهوية الشركة
+    // ج) توجيه جيمني الصارم ليلتزم ببيانات وهوية الشركة
     const systemInstruction = `
       أنت "المستشار الفني الذكي" الرسمي لنظام صيانة المعدات والمركبات في (شركة وادي دفا للمقاولات).
       مهمتك الصارمة والمحددة هي الإجابة على أسئلة مسؤول الصيانة ومساعدته في حصر وتحليل الأعطال بناءً على البيانات الحية المرفقة أدناه فقط.
@@ -226,7 +219,7 @@ router.post('/ai-chat', async (req, res) => {
       - سجل بلاغات الأعطال والصيانة التاريخي بالكامل: ${JSON.stringify(logsData)}
     `;
 
-    // ج) توليد الإجابة وإرسالها للفرونت إند مع دمج التوجيهات والسؤال بالشكل القياسي للمكتبة المستقرة
+    // د) إرسال الطلب بالهيكلية القياسية المتوافقة مع الإصدار المستقر للمكتبة
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: systemInstruction + "\n\nUser Question: " + message }] }]
     });
