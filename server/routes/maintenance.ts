@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { maintenanceLogs, equipment, projects } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
-import { GoogleGenAI } from '@google/generative-ai'; // 🛠️ تم تصحيح الاستيراد للكلاس القياسي الصحيح
+import { GoogleGenAI } from '@google/generative-ai'; // ✅ الاستيراد الصحيح والمعتمد من جوجل للكلاس الأساسي
 
 const router = Router();
 
@@ -83,7 +83,7 @@ router.put('/repair/:logId', async (req, res) => {
       return res.status(404).json({ error: 'سجل العطل غير موجود' });
     }
 
-    // ب) إعادة حالة المعدة المرتبطة بهذا العطل لتصبح جاهزة (available) تلقائياً
+    // b) إعادة حالة المعدة المرتبطة بهذا العطل لتصبح جاهزة (available) تلقائياً
     await db
       .update(equipment)
       .set({ status: 'available' })
@@ -115,7 +115,7 @@ router.get('/history/:equipmentId', async (req, res) => {
   }
 });
 
-// 4. جلب تقرير شامل وموحد لجميع الأعطال لصفحة التقارير الفنية (الرايت الجديد والمطابق للجدول الإداري)
+// 4. جلب تقرير شامل وموحد لجميع الأعطال لصفحة التقارير الفنية (الراوت الجديد والمطابق للجدول الإداري)
 // GET /api/maintenance/reports/all
 router.get('/reports/all', async (req, res) => {
   try {
@@ -207,9 +207,9 @@ router.post('/ai-chat', async (req, res) => {
     const fleetData = await db.select({ code: equipment.code, name: equipment.name, status: equipment.status, type: equipment.type }).from(equipment);
     const logsData = await db.select({ code: equipment.code, name: equipment.name, breakdown: maintenanceLogs.breakdownDate, repair: maintenanceLogs.repairDate, details: maintenanceLogs.details, project: maintenanceLogs.projectNameSnapshot }).from(maintenanceLogs).innerJoin(equipment, eq(maintenanceLogs.equipmentId, equipment.id));
 
-    // ب) التهيئة الرسمية الصارمة لـ Node.js باستخدام كلاس GoogleGenAI المستورد بنجاح
-    const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // ب) التهيئة الرسمية الصارمة لحزمة جيمني لضمان معالجة الـ Constructor بشكل صحيح
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+    const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     // 🎯 توجيه جيمني الصارم ليلتزم ببيانات وهوية الشركة
     const systemInstruction = `
@@ -226,10 +226,8 @@ router.post('/ai-chat', async (req, res) => {
       - سجل بلاغات الأعطال والصيانة التاريخي بالكامل: ${JSON.stringify(logsData)}
     `;
 
-    // ج) توليد الإجابة وإرسالها للفرونت إند
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: systemInstruction + "\n\nUser Question: " + message }] }]
-    });
+    // ج) توليد الإجابة وإرسالها للفرونت إند بالطريقة المتوافقة مع هيكلية الأكواد الحديثة
+    const result = await model.generateContent([systemInstruction, message]);
     const replyText = result.response.text;
 
     return res.json({
