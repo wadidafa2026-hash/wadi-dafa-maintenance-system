@@ -169,7 +169,7 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
   return (
     <div className="space-y-6 box-border w-full text-black" dir="rtl">
       
-      {/* الهيدر الرسمي للطباعة فقط */}
+      {/* الهيدر الرسمي الموحد - يظهر في الطباعة فقط */}
       <div className="hidden print:flex items-center justify-between border-b-4 border-double border-black pb-4 mb-4 w-full">
         <div className="flex items-center gap-4">
           <img src="/logo.jpg" alt="شعار الشركة" className="w-20 h-20 object-contain border-2 border-solid border-black rounded" onError={(e)=>{(e.target as HTMLElement).style.display='none'}} />
@@ -180,7 +180,6 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
         </div>
         <div className="text-left">
           <p className="text-xs font-black text-black m-0">تاريخ استخراج التقرير: {new Date().toLocaleDateString('en-GB')}</p>
-          <p className="text-xs font-black text-black m-0 mt-1">حالة البيانات: محدثة</p>
         </div>
       </div>
 
@@ -297,78 +296,77 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
       {loading ? (
         <p className="text-center text-sm font-black text-blue-900 animate-pulse">جاري تحميل البيانات من النظام...</p>
       ) : reportTab === 'assets' ? (
-        <div className="rounded-xl border-4 border-solid border-black overflow-hidden bg-white shadow-md print:border-2">
-          <div className="overflow-x-auto">
-            <table className="w-full text-right border-collapse text-sm table-fixed print:table-auto">
-              <thead>
-                <tr className="bg-black text-white font-black text-center">
-                  <th className="p-3 border-2 border-solid border-black text-xs md:text-sm w-32 print:w-28">نوع الآلية</th>
-                  <th className="p-3 border-2 border-solid border-black text-xs md:text-sm w-36 print:w-32">رقم التسلسل / اللوحة</th>
-                  <th className="p-3 border-2 border-solid border-black text-xs md:text-sm w-28 print:w-24">كود الآلية</th>
-                  <th className="p-3 border-2 border-solid border-black text-xs md:text-sm text-center print:w-auto">تفاصيل العطل</th>
-                  <th className="p-3 border-2 border-solid border-black text-xs md:text-sm w-24 print:w-24">تاريخ العطل</th>
-                  <th className="p-3 border-2 border-solid border-black text-xs md:text-sm w-24 print:w-24">تاريخ الاصلاح</th>
-                  <th className="p-3 border-2 border-solid border-black text-xs md:text-sm w-36 print:w-32">المشروع الحالي</th>
-                  <th className="p-3 border-2 border-solid border-black text-xs md:text-sm w-20 no-print">إجراء</th>
+        /* حاوية مرنة تسمح بالتمرير الأفقي على الشاشات الصغيرة وتلغى تلقائياً عند الطباعة */
+        <div className="rounded-xl border-4 border-solid border-black overflow-x-auto bg-white shadow-md print:border-2 print:overflow-visible w-full">
+          <table className="w-full text-right border-collapse text-sm min-w-[900px] print:min-w-full print:table-auto">
+            <thead>
+              <tr className="bg-black text-white font-black text-center">
+                <th className="p-3 border-2 border-solid border-black text-xs md:text-sm w-36 print:w-28">نوع الآلية</th>
+                <th className="p-3 border-2 border-solid border-black text-xs md:text-sm w-32 print:w-32">رقم التسلسل / اللوحة</th>
+                <th className="p-3 border-2 border-solid border-black text-xs md:text-sm w-28 print:w-24">كود الآلية</th>
+                <th className="p-3 border-2 border-solid border-black text-xs md:text-sm text-center print:w-auto">تفاصيل العطل</th>
+                <th className="p-3 border-2 border-solid border-black text-xs md:text-sm w-28 print:w-24">تاريخ العطل</th>
+                <th className="p-3 border-2 border-solid border-black text-xs md:text-sm w-28 print:w-24">تاريخ الاصلاح</th>
+                <th className="p-3 border-2 border-solid border-black text-xs md:text-sm w-36 print:w-32">المشروع الحالي</th>
+                <th className="p-3 border-2 border-solid border-black text-xs md:text-sm w-20 no-print">إجراء</th>
+              </tr>
+            </thead>
+            <tbody className="font-black text-black text-center whitespace-nowrap print:whitespace-normal">
+              {filteredFaults.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-8 text-center text-black font-black text-sm bg-slate-50">لا توجد بيانات مطابقة لخيارات التصفية المحددة.</td>
                 </tr>
-              </thead>
-              <tbody className="font-black text-black text-center">
-                {filteredFaults.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="p-8 text-center text-black font-black text-sm bg-slate-50">لا توجد بيانات مطابقة لخيارات التصفية المحددة.</td>
+              ) : (
+                filteredFaults.map((record) => (
+                  <tr key={record.id} className="hover:bg-slate-100 transition-all border-b-2 border-solid border-black/30 page-break-inside-avoid">
+                    <td className="p-3 border-2 border-solid border-black text-xs whitespace-normal">
+                      <span className="font-black block">{record.equipmentType === 'equipment' ? 'معدة ثقيلة' : 'مركبة / سيارة'}</span>
+                      <span className="text-blue-900 text-[11px] font-black block mt-0.5">({record.equipmentName})</span>
+                    </td>
+                    <td className="p-3 font-black font-mono text-black border-2 border-solid border-black text-xs whitespace-normal">
+                      {record.equipmentType === 'equipment' ? (record.serialNumber || '-') : (record.plateNumber || '-')}
+                    </td>
+                    <td className="p-3 font-black text-blue-950 uppercase text-xs border-2 border-solid border-black bg-slate-50">{record.equipmentCode}</td>
+                    
+                    {/* خلية التفاصيل مرنة ومنعطفة بشكل سليم لمنع ظهور النصوص عمودياً */}
+                    <td className="p-3 border-2 border-solid border-black text-right text-xs font-black leading-relaxed break-words whitespace-pre-line min-w-[200px]">
+                      {record.details || 'لم تدون تفاصيل'}
+                    </td>
+                    
+                    <td className="p-3 font-black font-mono text-black border-2 border-solid border-black text-xs">
+                      {record.breakdownDate ? new Date(record.breakdownDate).toLocaleDateString('en-GB') : '-'}
+                    </td>
+                    <td className="p-3 font-black font-mono border-2 border-solid border-black text-xs">
+                      {record.repairDate ? (
+                        <span className="text-emerald-900 font-black bg-emerald-100 border border-solid border-emerald-900 px-1.5 py-0.5 rounded text-[11px] inline-block print:border-none print:bg-transparent">
+                          {new Date(record.repairDate).toLocaleDateString('en-GB')}
+                        </span>
+                      ) : (
+                        <span className="text-red-900 font-black bg-red-100 border border-solid border-red-700 px-1.5 py-0.5 rounded text-[11px] inline-block print:text-black">تحت الصيانة</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-black font-black border-2 border-solid border-black text-right text-xs whitespace-normal">
+                      {record.projectNameSnapshot}
+                    </td>
+                    <td className="p-3 border-2 border-solid border-black no-print">
+                      <button
+                        onClick={() => {
+                          setSelectedLog(record);
+                          setEditBreakdownDate(record.breakdownDate ? record.breakdownDate.split('T')[0] : '');
+                          setEditRepairDate(record.repairDate ? record.repairDate.split('T')[0] : '');
+                          setEditDetails(record.details || '');
+                          setIsEditLogModalOpen(true);
+                        }}
+                        className="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2 py-1 rounded border-2 border-solid border-black cursor-pointer font-black transition-all shadow"
+                      >
+                        تعديل
+                      </button>
+                    </td>
                   </tr>
-                ) : (
-                  filteredFaults.map((record) => (
-                    <tr key={record.id} className="hover:bg-slate-100 transition-all border-b-2 border-solid border-black/30 page-break-inside-avoid">
-                      <td className="p-3 border-2 border-solid border-black text-xs">
-                        <span className="font-black block">{record.equipmentType === 'equipment' ? 'معدة ثقيلة' : 'مركبة / سيارة'}</span>
-                        <span className="text-blue-900 text-[11px] font-black block mt-0.5">({record.equipmentName})</span>
-                      </td>
-                      <td className="p-3 font-black font-mono text-black border-2 border-solid border-black text-xs">
-                        {record.equipmentType === 'equipment' ? (record.serialNumber || '-') : (record.plateNumber || '-')}
-                      </td>
-                      <td className="p-3 font-black text-blue-950 uppercase text-xs border-2 border-solid border-black bg-slate-50">{record.equipmentCode}</td>
-                      
-                      {/* خلية التفاصيل المرنة للطباعة */}
-                      <td className="p-3 border-2 border-solid border-black text-right text-xs font-black leading-relaxed break-words whitespace-pre-line overflow-visible">
-                        {record.details || 'لم تدون تفاصيل'}
-                      </td>
-                      
-                      <td className="p-3 font-black font-mono text-black border-2 border-solid border-black text-xs">
-                        {record.breakdownDate ? new Date(record.breakdownDate).toLocaleDateString('en-GB') : '-'}
-                      </td>
-                      <td className="p-3 font-black font-mono border-2 border-solid border-black text-xs">
-                        {record.repairDate ? (
-                          <span className="text-emerald-900 font-black bg-emerald-100 border border-solid border-emerald-900 px-1.5 py-0.5 rounded text-[11px] inline-block print:border-none print:bg-transparent">
-                            {new Date(record.repairDate).toLocaleDateString('en-GB')}
-                          </span>
-                        ) : (
-                          <span className="text-red-900 font-black bg-red-100 border border-solid border-red-700 px-1.5 py-0.5 rounded text-[11px] inline-block print:text-black">تحت الصيانة</span>
-                        )}
-                      </td>
-                      <td className="p-3 text-black font-black border-2 border-solid border-black text-right text-xs">
-                        {record.projectNameSnapshot}
-                      </td>
-                      <td className="p-3 border-2 border-solid border-black no-print">
-                        <button
-                          onClick={() => {
-                            setSelectedLog(record);
-                            setEditBreakdownDate(record.breakdownDate ? record.breakdownDate.split('T')[0] : '');
-                            setEditRepairDate(record.repairDate ? record.repairDate.split('T')[0] : '');
-                            setEditDetails(record.details || '');
-                            setIsEditLogModalOpen(true);
-                          }}
-                          className="bg-amber-500 hover:bg-amber-600 text-white text-xs px-2 py-1 rounded border-2 border-solid border-black cursor-pointer font-black transition-all shadow"
-                        >
-                          تعديل
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       ) : (
         /* تقرير المشتريات المالي */
@@ -378,35 +376,33 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
             <span className="text-2xl font-black tracking-wide bg-white text-blue-900 px-4 py-1 rounded border-2 border-solid border-black print:bg-black print:text-white">{totalFinancialCost.toLocaleString()} ريال سعودي</span>
           </div>
           
-          <div className="rounded-xl border-4 border-solid border-black overflow-hidden bg-white shadow-md print:border-2">
-            <div className="overflow-x-auto">
-              <table className="w-full text-right border-collapse text-sm">
-                <thead>
-                  <tr className="bg-black text-white font-black text-center">
-                    <th className="p-4 border-2 border-solid border-black">كود الآلية</th>
-                    <th className="p-4 border-2 border-solid border-black">بيان قطعة الغيار أو المشتريات</th>
-                    <th className="p-4 border-2 border-solid border-black w-40">التاريخ</th>
-                    <th className="p-4 border-2 border-solid border-black w-48">التكلفة المالية</th>
+          <div className="rounded-xl border-4 border-solid border-black overflow-x-auto bg-white shadow-md print:border-2 print:overflow-visible w-full">
+            <table className="w-full text-right border-collapse text-sm min-w-[700px] print:min-w-full">
+              <thead>
+                <tr className="bg-black text-white font-black text-center">
+                  <th className="p-4 border-2 border-solid border-black">كود الآلية</th>
+                  <th className="p-4 border-2 border-solid border-black">بيان قطعة الغيار أو المشتريات</th>
+                  <th className="p-4 border-2 border-solid border-black w-40">التاريخ</th>
+                  <th className="p-4 border-2 border-solid border-black w-48">التكلفة المالية</th>
+                </tr>
+              </thead>
+              <tbody className="font-black text-black text-center whitespace-nowrap print:whitespace-normal">
+                {filteredPurchases.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="p-8 text-center text-black font-black text-sm bg-slate-50">لا توجد تكاليف مشتريات مسجلة لهذه الفترة.</td>
                   </tr>
-                </thead>
-                <tbody className="font-black text-black text-center">
-                  {filteredPurchases.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="p-8 text-center text-black font-black text-sm bg-slate-50">لا توجد تكاليف مشتريات مسجلة لهذه الفترة.</td>
+                ) : (
+                  filteredPurchases.map((record) => (
+                    <tr key={record.id} className="hover:bg-slate-100 transition-all border-b-2 border-solid border-black/30 page-break-inside-avoid">
+                      <td className="p-4 font-black text-blue-950 uppercase text-base border-2 border-solid border-black bg-slate-50">{record.equipmentCode}</td>
+                      <td className="p-4 text-sm font-black border-2 border-solid border-black text-right whitespace-normal">{record.purchaseItem}</td>
+                      <td className="p-4 font-black font-mono text-black border-2 border-solid border-black">{record.breakdownDate}</td>
+                      <td className="p-4 font-black text-lg text-blue-900 border-2 border-solid border-black bg-blue-50">{(record.purchasePrice || 0).toLocaleString()} ريال</td>
                     </tr>
-                  ) : (
-                    filteredPurchases.map((record) => (
-                      <tr key={record.id} className="hover:bg-slate-100 transition-all border-b-2 border-solid border-black/30 page-break-inside-avoid">
-                        <td className="p-4 font-black text-blue-950 uppercase text-base border-2 border-solid border-black bg-slate-50">{record.equipmentCode}</td>
-                        <td className="p-4 text-sm font-black border-2 border-solid border-black text-right">{record.purchaseItem}</td>
-                        <td className="p-4 font-black font-mono text-black border-2 border-solid border-black">{record.breakdownDate}</td>
-                        <td className="p-4 font-black text-lg text-blue-900 border-2 border-solid border-black bg-blue-50">{(record.purchasePrice || 0).toLocaleString()} ريال</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -497,6 +493,7 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
             width: 100% !important;
             table-layout: auto !important;
             border-collapse: collapse !important;
+            white-space: normal !important;
           }
           th {
             background-color: #f3f4f6 !important;
