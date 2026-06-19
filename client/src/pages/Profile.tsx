@@ -28,17 +28,23 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
   const [newAdminUsername, setNewAdminUsername] = useState('');
   const [newAdminPassword, setNewAdminPassword] = useState('');
   const [newAdminRole, setNewAdminRole] = useState<'sub_admin' | 'viewer'>('sub_admin');
-  const [adminMsg, setAdminMsg] = useState('');
+  const [adminMsg, setAdminMsg] = useState({ text: '', isError: false });
 
   // جلب قائمة المستخدمين إذا كان الحساب super_admin
   const fetchUsers = async () => {
     if (user.role !== 'super_admin') return;
     try {
-      // 🔗 تم توجيه المسار عبر بوابة الـ /api/auth الصحيحة في السيرفر
-      const res = await fetch(`${baseUrl}/api/auth/users`); 
+      const res = await fetch(`${baseUrl}/api/auth/users`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }); 
       if (res.ok) {
         const data = await res.json();
         setUsersList(data);
+      } else {
+        console.error('فشل السيرفر في إعادة قائمة المستخدمين');
       }
     } catch (err) {
       console.error('Error fetching users:', err);
@@ -54,8 +60,12 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
     e.preventDefault();
     setPasswordMsg({ text: '', isError: false });
 
+    if (!currentPassword || !newPassword) {
+      setPasswordMsg({ text: '❌ الرجاء ملء كافة الحقول', isError: true });
+      return;
+    }
+
     try {
-      // 🔗 تم توجيه المسار عبر بوابة الـ /api/auth الصحيحة في السيرفر
       const res = await fetch(`${baseUrl}/api/auth/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -65,26 +75,27 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
           newPassword 
         })
       });
+      
+      const data = await res.json();
+
       if (res.ok) {
         setPasswordMsg({ text: '✅ تم تحديث كلمة المرور بنجاح!', isError: false });
         setCurrentPassword('');
         setNewPassword('');
       } else {
-        const data = await res.json();
         setPasswordMsg({ text: `❌ ${data.message || 'فشل التحديث'}`, isError: true });
       }
     } catch (err) {
-      setPasswordMsg({ text: '❌ خطأ في الاتصال بالسيرفر', isError: true });
+      setPasswordMsg({ text: '❌ خطأ في الاتصال بالسيرفر، تأكد من الشبكة', isError: true });
     }
   };
 
   // ➕ دالة إضافة مشرف جديد أو قارئ (حصرية للـ super_admin)
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAdminMsg('');
+    setAdminMsg({ text: '', isError: false });
 
     try {
-      // 🔗 تم توجيه المسار عبر بوابة الـ /api/auth الصحيحة في السيرفر
       const res = await fetch(`${baseUrl}/api/auth/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -95,16 +106,20 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
           role: newAdminRole
         })
       });
+
+      const data = await res.json();
+
       if (res.ok) {
-        setAdminMsg('✅ تم إصدار الصلاحية وإضافة الحساب بنجاح!');
-        setNewAdminName(''); setNewAdminUsername(''); setNewAdminPassword('');
-        fetchUsers(); // تحديث القائمة فوراً
+        setAdminMsg({ text: '✅ تم إصدار الصلاحية وإضافة الحساب بنجاح!', isError: false });
+        setNewAdminName(''); 
+        setNewAdminUsername(''); 
+        setNewAdminPassword('');
+        fetchUsers(); // تحديث الجدول فوراً تلقائياً
       } else {
-        const data = await res.json();
-        setAdminMsg(`❌ ${data.message || 'فشل إنشاء الحساب'}`);
+        setAdminMsg({ text: `❌ ${data.message || 'فشل إنشاء الحساب'}`, isError: true });
       }
     } catch (err) {
-      setAdminMsg('❌ خطأ في السيرفر');
+      setAdminMsg({ text: '❌ خطأ في الاتصال بالسيرفر أثناء إضافة الحساب', isError: true });
     }
   };
 
@@ -225,8 +240,8 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
                 </select>
               </div>
               
-              {adminMsg && (
-                <p className="text-xs font-black text-blue-900 md:col-span-2 m-0 bg-amber-100 p-2 rounded border border-solid border-black">{adminMsg}</p>
+              {adminMsg.text && (
+                <p className={`text-xs font-black md:col-span-2 m-0 p-2 rounded border border-solid ${adminMsg.isError ? 'bg-red-100 text-red-900 border-red-700' : 'bg-amber-100 text-amber-900 border-black'}`}>{adminMsg.text}</p>
               )}
               
               <div className="md:col-span-2 flex justify-end pt-2 border-t border-solid border-black/10">
@@ -252,17 +267,23 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
                     </tr>
                   </thead>
                   <tbody className="font-black text-black">
-                    {usersList.map((u) => (
-                      <tr key={u.id} className="hover:bg-slate-100 border-b border-solid border-black/20">
-                        <td className="p-3 border-l border-solid border-black/10">{u.name}</td>
-                        <td className="p-3 font-mono font-black text-blue-900 border-l border-solid border-black/10">@{u.username}</td>
-                        <td className="p-3 text-center">
-                          <span className={`inline-block px-3 py-0.5 rounded text-xs font-black border border-solid ${u.role === 'super_admin' ? 'bg-red-100 text-red-900 border-red-700' : u.role === 'sub_admin' ? 'bg-blue-100 text-blue-900 border-blue-900' : 'bg-slate-100 text-slate-900 border-slate-700'}`}>
-                            {u.role === 'super_admin' ? '👑 مدير عام' : u.role === 'sub_admin' ? '🔧 مشرف فرعي' : '👁️ عرض فقط'}
-                          </span>
-                        </td>
+                    {usersList.length > 0 ? (
+                      usersList.map((u) => (
+                        <tr key={u.id} className="hover:bg-slate-100 border-b border-solid border-black/20">
+                          <td className="p-3 border-l border-solid border-black/10">{u.name}</td>
+                          <td className="p-3 font-mono font-black text-blue-900 border-l border-solid border-black/10">@{u.username}</td>
+                          <td className="p-3 text-center">
+                            <span className={`inline-block px-3 py-0.5 rounded text-xs font-black border border-solid ${u.role === 'super_admin' ? 'bg-red-100 text-red-900 border-red-700' : u.role === 'sub_admin' ? 'bg-blue-100 text-blue-900 border-blue-900' : 'bg-slate-100 text-slate-900 border-slate-700'}`}>
+                              {u.role === 'super_admin' ? '👑 مدير عام' : u.role === 'sub_admin' ? '🔧 مشرف فرعي' : '👁️ عرض فقط'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={3} className="text-center p-4 text-slate-500">جاري تحميل قائمة المشرفين...</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
