@@ -1,6 +1,7 @@
 {
   "name": "wadi-dafa-server",
   "version": "1.0.0",
+  "type": "module",
   "description": "Wadi Dafa Fleet Maintenance Server",
   "main": "index.ts",
   "scripts": {
