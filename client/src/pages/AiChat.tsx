@@ -1,16 +1,29 @@
 // client/src/pages/AiChat.tsx
 import React, { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 interface AiChatProps {
   isDarkMode: boolean;
+  // ➕ أضفنا هذا التمرير لتمكين الشات من تغيير الصفحة الحالية في النظام مباشرة عند الضغط على الرابط
+  onNavigate?: (view: 'hub' | 'fleet' | 'reports' | 'profile' | 'ai_chat') => void;
 }
 
-export const AiChat: React.FC<AiChatProps> = ({ isDarkMode }) => {
+export const AiChat: React.FC<AiChatProps> = ({ isDarkMode, onNavigate }) => {
   const [messages, setMessages] = useState<{ role: 'user' | 'model'; text: string }[]>([
-    { role: 'model', text: 'مرحباً بك في نظام مساعد الموقع الذكي. اكتب استفسارك هنا لمساعدتك في حصر الأعطال، مراجعة حالة المعدات، وتلخيص تكاليف المشتريات فورياً بأسلوب مبسط.' }
+    { 
+      role: 'model', 
+      text: 'مرحباً بك في نظام مساعد الموقع الذكي. اكتب استفسارك هنا لمساعدتك في حصر الأعطال، مراجعة حالة المعدات، وتلخيص تكاليف المشتريات فورياً بأسلوب مبسط.' 
+    }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // دالة لتنظيف أي نجوم مكررة أو مشوهة قد يرسلها النموذج في القوائم والنصوص
+  const cleanMarkdownText = (rawText: string) => {
+    return rawText
+      .replace(/\*\*\*+/g, '**') // تنظيف الثلاث نجوم المتتالية وتحويلها لنجمتين
+      .replace(/(\r\n|\n|\r)/gm, "\n"); // توحيد السطور الجديدة
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,10 +55,29 @@ export const AiChat: React.FC<AiChatProps> = ({ isDarkMode }) => {
     }
   };
 
+  // معالج الضغط على الروابط الداخلية الموجهة للصفحات الأخرى
+  const handleInternalLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (onNavigate) {
+      if (href.includes('reports')) {
+        e.preventDefault();
+        onNavigate('reports');
+      } else if (href.includes('fleet')) {
+        e.preventDefault();
+        onNavigate('fleet');
+      } else if (href.includes('profile')) {
+        e.preventDefault();
+        onNavigate('profile');
+      } else if (href.includes('hub')) {
+        e.preventDefault();
+        onNavigate('hub');
+      }
+    }
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto space-y-3 box-border text-black font-sans" dir="rtl">
       
-      {/* عنوان الصفحة البسيط والأنيق بديل الصندوق الأسود الكبير */}
+      {/* عنوان الصفحة البسيط والأنيق */}
       <div className={`p-3 border-2 border-solid rounded-xl flex items-center justify-between shadow-sm ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-black text-black'}`}>
         <div className="flex items-center gap-2">
           <span className="text-xl">🤖</span>
@@ -54,20 +86,42 @@ export const AiChat: React.FC<AiChatProps> = ({ isDarkMode }) => {
         <span className="text-xs font-black opacity-70">المحادثة الفورية</span>
       </div>
 
-      {/* صندوق الشات الكبير والممتد بشكل كامل */}
+      {/* صندوق الشات الكبير والممتد */}
       <div className={`rounded-xl border-4 border-solid border-black overflow-hidden shadow-lg flex flex-col h-[70vh] ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
         
         {/* منطقة الرسائل الفسيحة والمريحة للعين */}
         <div className={`flex-1 p-4 md:p-6 overflow-y-auto space-y-4 box-border text-sm leading-relaxed ${isDarkMode ? 'bg-slate-950' : 'bg-slate-50'}`}>
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] p-3.5 rounded-xl border-2 border-solid shadow-sm font-black text-sm ${msg.role === 'user' ? 'bg-blue-900 text-white border-blue-950 rounded-bl-none' : 'bg-amber-100 text-black border-black rounded-br-none'}`}>
-                {msg.text}
+              <div className={`max-w-[85%] p-3.5 rounded-xl border-2 border-solid shadow-sm font-medium text-sm prose prose-sm max-w-none ${msg.role === 'user' ? 'bg-blue-900 text-white border-blue-950 rounded-bl-none' : 'bg-amber-100 text-black border-black rounded-br-none'}`}>
+                
+                {/* 🎯 تعديل هندسي: استخدام المكون المطور لعرض النصوص بدون نجوم وتحويل الروابط لأزرار قابلة للضغط */}
+                <ReactMarkdown
+                  components={{
+                    // تحويل النجوم إلى نصوص عريضة نظيفة
+                    strong: ({node, ...props}) => <span className="font-black text-blue-950 block my-1 underline decoration-double" {...props} />,
+                    // تحويل الروابط النصية إلى روابط تفاعلية ملونة وقابلة للنقر الفوري
+                    a: ({node, href, ...props}) => (
+                      <a 
+                        href={href} 
+                        onClick={(e) => handleInternalLinkClick(e, href || '')}
+                        className="inline-block bg-blue-950 text-white font-black px-2.5 py-1 rounded text-xs mx-1 my-0.5 border border-solid border-black cursor-pointer hover:bg-blue-900 transition-colors no-underline shadow-sm animate-pulse"
+                        {...props} 
+                      />
+                    ),
+                    // تنظيف القوائم المنقطة والمترابطة
+                    li: ({node, ...props}) => <li className="list-disc list-inside my-1.5 font-bold pr-1 text-right" {...props} />,
+                    p: ({node, ...props}) => <p className="m-0 p-0 leading-relaxed font-semibold inline" {...props} />
+                  }}
+                >
+                  {cleanMarkdownText(msg.text)}
+                </ReactMarkdown>
+
               </div>
             </div>
           ))}
           
-          {/* حالة الانتظار البسيطة والمفهومة لكل الموظفين */}
+          {/* حالة الانتظار البسيطة */}
           {isLoading && (
             <div className="flex justify-start">
               <div className="p-2.5 px-4 rounded-xl text-xs font-black bg-blue-50 border-2 border-solid border-blue-900 text-blue-900 animate-pulse flex items-center gap-2">
@@ -78,7 +132,7 @@ export const AiChat: React.FC<AiChatProps> = ({ isDarkMode }) => {
           )}
         </div>
 
-        {/* مدخل النص العريض أسفل الشاشة والأزرار الاحترافية */}
+        {/* مدخل النص العريض أسفل الشاشة */}
         <form onSubmit={handleSendMessage} className={`p-3 border-t-4 border-solid border-black flex gap-2 ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
           <input
             type="text"

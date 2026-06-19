@@ -164,7 +164,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
         {currentView === 'fleet' && <Fleet isDarkMode={isDarkMode} userRole={user.role} />}
         {currentView === 'reports' && <Reports isDarkMode={isDarkMode} />}
         {currentView === 'profile' && <Profile user={user} isDarkMode={isDarkMode} />}
-        {currentView === 'ai_chat' && <AiChat isDarkMode={isDarkMode} />} 
+        
+        {/* 🎯 السطر المحدث أدناه لتمرير دالة التوجيه بشكل صحيح وسلس */}
+        {currentView === 'ai_chat' && (
+          <AiChat isDarkMode={isDarkMode} onNavigate={handleViewChange} />
+        )} 
 
       </main>
     </div>
