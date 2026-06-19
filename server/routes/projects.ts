@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { db } from '../db'; // المسار الصحيح للوصول لمجلد db من داخل routes
-import { projects } from '../db/schema';
+import { db } from '../db/index.js'; // تأكد من الـ .js إذا كنت شغال بـ ESM
+import { projects } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 
 const router = Router();
@@ -42,6 +42,26 @@ router.post('/', async (req, res) => {
     }
     
     return res.status(500).json({ error: 'حدث خطأ أثناء إضافة المشروع الجديد' });
+  }
+});
+
+// 3. حذف مشروع من النظام (يستخدمه المشرف الرئيسي في صفحة البروفايل)
+// DELETE /api/projects/:id
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ error: 'معرف المشروع مطلوب لإتمام عملية الحذف' });
+    }
+
+    // حذف المشروع بناءً على الـ id
+    await db.delete(projects).where(eq(projects.id, parseInt(id)));
+
+    return res.status(200).json({ success: true, message: 'تم حذف المشروع بنجاح من قاعدة البيانات' });
+  } catch (error: any) {
+    console.error('Error deleting project:', error);
+    return res.status(500).json({ error: 'حدث خطأ في السيرفر أثناء محاولة حذف المشروع' });
   }
 });
 

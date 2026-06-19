@@ -63,7 +63,6 @@ router.post('/change-password', async (req, res) => {
 // 3️⃣ رابط جلب قائمة المشرفين (GET /api/auth/users)
 router.get('/users', async (req, res) => {
   try {
-    // جلب كل المستخدمين مرتبين أو عادي وعرضهم في لوحة التحكم
     const allUsers = await db.select({
       id: users.id,
       name: users.name,
@@ -103,6 +102,24 @@ router.post('/users', async (req, res) => {
     res.json({ message: 'تم إنشاء الحساب بنجاح' });
   } catch (error) {
     res.status(500).json({ message: 'خطأ في السيرفر أثناء إنشاء الحساب', error });
+  }
+});
+
+// 5️⃣ رابط حذف مشرف/مراقب نهائياً (DELETE /api/auth/users/:id)
+router.delete('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ message: 'معرف المستخدم مطلوب لإتمام الحذف' });
+    }
+
+    // تنفيذ أمر الحذف من قاعدة البيانات بناءً على الرقم المعرف
+    await db.delete(users).where(eq(users.id, parseInt(id)));
+
+    res.json({ message: 'تم سحب الصلاحية وحذف المشرف بنجاح' });
+  } catch (error) {
+    res.status(500).json({ message: 'خطأ في السيرفر أثناء محاولة حذف المشرف', error });
   }
 });
 
