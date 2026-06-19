@@ -34,8 +34,8 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
   const fetchUsers = async () => {
     if (user.role !== 'super_admin') return;
     try {
-      // 🌟 التوجيه للمسار الصحيح الموثق بالسيرفر
-      const res = await fetch(`${baseUrl}/api/auth/users`); 
+      // 🌟 تعديل المسار ليتوافق مع آلية الباك إند المباشرة الموثقة عندك
+      const res = await fetch(`${baseUrl}/api/users`); 
       if (res.ok) {
         const data = await res.json();
         setUsersList(data);
@@ -55,8 +55,8 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
     setPasswordMsg({ text: '', isError: false });
 
     try {
-      // 🌟 التوجيه لـ /api/auth/change-password مع تمرير الـ username المطلوب بالسيرفر
-      const res = await fetch(`${baseUrl}/api/auth/change-password`, {
+      // 🌟 تعديل مسار تحديث كلمة المرور المباشر
+      const res = await fetch(`${baseUrl}/api/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -65,12 +65,12 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
           newPassword 
         })
       });
-      const data = await res.json();
       if (res.ok) {
         setPasswordMsg({ text: '✅ تم تحديث كلمة المرور بنجاح!', isError: false });
         setCurrentPassword('');
         setNewPassword('');
       } else {
+        const data = await res.json();
         setPasswordMsg({ text: `❌ ${data.message || 'فشل التحديث'}`, isError: true });
       }
     } catch (err) {
@@ -84,8 +84,8 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
     setAdminMsg('');
 
     try {
-      // 🌟 التوجيه لـ /api/auth/users لإرسال الحساب الجديد
-      const res = await fetch(`${baseUrl}/api/auth/users`, {
+      // 🌟 تعديل مسار إضافة حساب مستخدم جديد المباشر
+      const res = await fetch(`${baseUrl}/api/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -114,7 +114,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
       {/* 👤 العمود الأيمن: بطاقة بيانات الحساب الحالي + تغيير الباسورد */}
       <div className="lg:col-span-1 space-y-6">
         
-        {/* كرت تفاصيل الحساب الحالي - تباين حاد بنسبة 100% */}
+        {/* كرت تفاصيل الحساب الحالي */}
         <div className="p-6 rounded-xl border-4 border-solid border-black bg-white shadow-md">
           <div className="text-center space-y-4">
             <div className="w-20 h-20 bg-blue-100 text-blue-900 text-3xl flex items-center justify-center rounded-full mx-auto font-black border-2 border-solid border-black">
@@ -132,7 +132,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
           </div>
         </div>
 
-        {/* كرت تغيير كلمة المرور - مدعم بالحدود السوداء الواضحة */}
+        {/* كرت تغيير كلمة المرور */}
         <div className="p-6 rounded-xl border-4 border-solid border-black bg-white shadow-md">
           <h4 className="text-sm font-black text-blue-900 m-0 mb-4">🔐 تحديث أمان الحساب (كلمة المرور):</h4>
           <form onSubmit={handleChangePassword} className="space-y-4">
@@ -170,13 +170,13 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
 
       </div>
 
-      {/* 👑 العمود الأيسر: لوحة التحكم في الصلاحيات والمشرفين (حصرية للـ super_admin) */}
+      {/* 👑 العمود الأيسر: لوحة التحكم في الصلاحيات والمشرفين */}
       <div className="lg:col-span-2">
         {user.role === 'super_admin' ? (
           <div className="p-6 rounded-xl border-4 border-solid border-black bg-white space-y-6 shadow-md">
             <div>
               <h3 className="text-base font-black text-blue-900 m-0">🛠️ لوحة تحكم وإصدار صلاحيات المشرفين</h3>
-              <p className="text-xs text-black font-black m-0 mt-1">بصفتك مديراً عاماً للنظام, يمكنك منح أو سحب صلاحيات المراقبة والصيانة لشركة وادي دفا.</p>
+              <p className="text-xs text-black font-black m-0 mt-1">بصفتك مديراً عاماً للنظام، يمكنك منح أو سحب صلاحيات المراقبة والصيانة لشركة وادي دفا.</p>
             </div>
 
             {/* نموذج إضافة حساب مشرف جديد */}
@@ -239,7 +239,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
               </div>
             </form>
 
-            {/* جدول عرض الطاقم الإداري النشط حالياً */}
+            {/* جدول عرض الطاقم الإداري */}
             <div className="space-y-3">
               <h4 className="text-sm font-black text-black m-0">📋 الحسابات الإدارية النشطة حالياً بالنظام:</h4>
               <div className="border-2 border-solid border-black rounded-lg overflow-hidden text-sm bg-white">
