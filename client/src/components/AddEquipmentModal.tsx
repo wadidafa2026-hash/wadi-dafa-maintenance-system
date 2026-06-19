@@ -1,4 +1,3 @@
-// client/src/components/AddEquipmentModal.tsx
 import React, { useState, useEffect } from 'react';
 
 interface AddEquipmentModalProps {
@@ -16,30 +15,37 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
   onSuccess,
   isDarkMode = false,
 }) => {
-  // ─── حالات الحقول الأساسية (محفوظة بالكامل) ───────────────────────────────────
+  // ─── حالات الحقول الأساسية ───────────────────────────────────
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [model, setModel] = useState('');
   const [serialNumber, setSerialNumber] = useState('');
   const [plateNumber, setPlateNumber] = useState('');
   
-  // 🏗️ حالة المشاريع (محفوظة بالكامل)
+  // 🏗️ حالة المشاريع لربط المعدة بموقعها الحالي
   const [projectsList, setProjectsList] = useState<{ id: number; name: string }[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState('');
 
-  // 📸 حالات روابط الصور (محفوظة بالكامل)
+  // 📸 حالات روابط الصور (يتم ملؤها تلقائياً بعد الرفع لكلاودنري)
   const [frontImageUrl, setFrontImageUrl] = useState('');
   const [backImageUrl, setBackImageUrl] = useState('');
   const [codeImageUrl, setCodeImageUrl] = useState('');
 
+  // حالات مؤشر الرفع (Spinner) لكل صورة على حدة لراحة المستخدم بالميدان
+  const [uploadingFront, setUploadingFront] = useState(false);
+  const [uploadingBack, setUploadingBack] = useState(false);
+  const [uploadingCode, setUploadingCode] = useState(false);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 🔄 جلب قائمة المشاريع حياً عند فتح المودال (محفوظة ومؤمنة بالكامل)
+  // جلب رابط السيرفر من متغيرات البيئة
+  const baseUrl = import.meta.env.VITE_API_URL || "";
+
+  // 🔄 جلب قائمة المشاريع لتغذية القائمة المنسدلة عند فتح المودال
   useEffect(() => {
     if (isOpen) {
       const fetchProjects = async () => {
-        const baseUrl = import.meta.env.VITE_API_URL || "";
         try {
           const res = await fetch(`${baseUrl}/api/projects`);
           if (res.ok) {
@@ -56,21 +62,60 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
 
   if (!isOpen) return null;
 
+  // ☁️ دالة رفع الصور التلقائية إلى السيرفر ومنه مباشرة إلى كلاودنري
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>, imageType: 'front' | 'back' | 'code') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // تشغيل مؤشر التحميل حسب الزر المضغوط
+    if (imageType === 'front') setUploadingFront(true);
+    if (imageType === 'back') setUploadingBack(true);
+    if (imageType === 'code') setUploadingCode(true);
+
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('folder', 'equipments');
+
+    try {
+      const res = await fetch(`${baseUrl}/api/upload`, {
+        method: 'POST',
+        body: formData, // إرسال الصورة كـ ملف
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.imageUrl) {
+        // تخزين الرابط المسترجع في الحالة المناسبة
+        if (imageType === 'front') setFrontImageUrl(data.imageUrl);
+        if (imageType === 'back') setBackImageUrl(data.imageUrl);
+        if (imageType === 'code') setCodeImageUrl(data.imageUrl);
+      } else {
+        alert(data.error || 'فشل رفع الصورة، يرجى المحاولة مرة أخرى.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('حدث خطأ في الاتصال بالسيرفر أثناء رفع الصورة.');
+    } finally {
+      // إيقاف مؤشر التحميل
+      if (imageType === 'front') setUploadingFront(false);
+      if (imageType === 'back') setUploadingBack(false);
+      if (imageType === 'code') setUploadingCode(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim()) {
-      setError('حقل الكود هو المعرف الفريد الإجباري ولا يمكن تركه فارغاً.');
+      setError('حقل كود الآلية مطلوب وإلزامي للنظام.');
       return;
     }
 
     setSubmitting(true);
     setError(null);
 
-    const baseUrl = import.meta.env.VITE_API_URL || "";
-
     const payload = {
       code: code.trim().toUpperCase(),
-      name: name.trim() || `آلية غير مسمية (${code})`,
+      name: name.trim() || `آلية (${code})`,
       model: model.trim() || null,
       type,
       serialNumber: type === 'equipment' ? (serialNumber.trim() || null) : null,
@@ -90,6 +135,7 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
       });
 
       if (response.ok) {
+        // تصفير الحقول بعد النجاح
         setCode(''); setName(''); setModel(''); setSerialNumber(''); setPlateNumber(''); 
         setCurrentProjectId(''); setFrontImageUrl(''); setBackImageUrl(''); setCodeImageUrl('');
         onSuccess(); 
@@ -108,16 +154,14 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" dir="rtl">
-      {/* تم تحويل الحاوية إلى خلفية بيضاء ناصعة مع حدود سوداء سميكة وحادة للتباين العالي */}
       <div className="w-full max-w-xl p-6 md:p-8 rounded-xl border-4 border-solid border-black bg-white text-black shadow-[0_0_30px_rgba(0,0,0,0.5)] max-h-[92vh] overflow-y-auto">
         
-        {/* رأس المودال: العنوان باللون الأزرق الغامق الممتاز والواضح جداً والخط سميك جداً */}
         <div className="mb-5 pb-3 border-b-4 border-solid border-black">
           <h3 className="text-2xl font-black text-blue-900 m-0">
             {type === 'equipment' ? '⚙️ تسجيل معدة ثقيلة جديدة' : '🚚 تسجيل مركبة / سيارة جديدة'}
           </h3>
           <p className="text-sm font-black text-black mt-1.5 bg-yellow-100 p-2 rounded border-2 border-solid border-black">
-            حقل الكود إجباري، وباقي الحقول اختيارية لتسهيل العمل اليومي الميداني.
+            الآن يمكنك التقاط أو رفع الصور مباشرة من الكاميرا أو الاستوديو بدلاً من الروابط النصية.
           </p>
         </div>
 
@@ -129,38 +173,37 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-5">
           
-          {/* كود الآلية - أسود قاتم للعناوين، أزرق داكن للنص والـ Placeholder والحدود سوداء حادة */}
           <div className="space-y-1.5">
             <label className="block text-base font-black text-black">كود الآلية الفريد <span className="text-red-700 text-lg font-black">*</span>:</label>
             <input
               type="text"
               required
-              placeholder="مثال: ادخل السيريال نمبر او الكود مثل EQ-01"
+              placeholder="مثال: W.G.F566"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              className="w-full px-4 py-3 text-base font-black tracking-wider rounded border-2 border-solid border-black bg-white text-blue-900 placeholder:text-blue-900/70 outline-none focus:border-blue-900 shadow-sm"
+              className="w-full px-4 py-3 text-base font-black tracking-wider rounded border-2 border-solid border-black bg-white text-blue-900 outline-none"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="block text-base font-black text-black">الاسم الفني الإجمالي:</label>
+              <label className="block text-base font-black text-black">الاسم الإجمالي للآلية:</label>
               <input
                 type="text"
-                placeholder="مثال: بولدوزر كاتر بيلر"
+                placeholder="مثال: كتر بيلر بوكلين"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 text-base font-black rounded border-2 border-solid border-black bg-white text-blue-900 placeholder:text-blue-900/70 outline-none focus:border-blue-900 shadow-sm"
+                className="w-full px-4 py-3 text-base font-black rounded border-2 border-solid border-black bg-white text-blue-900 outline-none"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="block text-base font-black text-black">الموديل / سنة الصنع:</label>
+              <label className="block text-base font-black text-black">الموديل / السنة:</label>
               <input
                 type="text"
-                placeholder="مثال: D9R / 2024"
+                placeholder="مثال: 2019"
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                className="w-full px-4 py-3 text-base font-black rounded border-2 border-solid border-black bg-white text-blue-900 placeholder:text-blue-900/70 outline-none focus:border-blue-900 shadow-sm"
+                className="w-full px-4 py-3 text-base font-black rounded border-2 border-solid border-black bg-white text-blue-900 outline-none"
               />
             </div>
           </div>
@@ -168,91 +211,88 @@ export const AddEquipmentModal: React.FC<AddEquipmentModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {type === 'equipment' ? (
               <div className="space-y-1.5">
-                <label className="block text-base font-black text-black">الرقم التسلسلي (Serial Number):</label>
+                <label className="block text-base font-black text-black">الرقم التسلسلي (S/N):</label>
                 <input
                   type="text"
-                  placeholder="ادخل السيريال نمبر"
+                  placeholder="ادخل الرقم التسلسلي"
                   value={serialNumber}
                   onChange={(e) => setSerialNumber(e.target.value)}
-                  className="w-full px-4 py-3 text-base font-black font-mono rounded border-2 border-solid border-black bg-white text-blue-900 placeholder:text-blue-900/70 outline-none focus:border-blue-900 shadow-sm"
+                  className="w-full px-4 py-3 text-base font-black rounded border-2 border-solid border-black bg-white text-blue-900 outline-none"
                 />
               </div>
             ) : (
               <div className="space-y-1.5">
-                <label className="block text-base font-black text-black">رقم اللوحة والترميز:</label>
+                <label className="block text-base font-black text-black">رقم اللوحة:</label>
                 <input
                   type="text"
-                  placeholder="مثال: أ ب ج 1234"
+                  placeholder="مثال: 1234 أ ب ج"
                   value={plateNumber}
                   onChange={(e) => setPlateNumber(e.target.value)}
-                  className="w-full px-4 py-3 text-base font-black rounded border-2 border-solid border-black bg-white text-blue-900 placeholder:text-blue-900/70 outline-none focus:border-blue-900 shadow-sm"
+                  className="w-full px-4 py-3 text-base font-black rounded border-2 border-solid border-black bg-white text-blue-900 outline-none"
                 />
               </div>
             )}
 
-            {/* 🏗️ القائمة المنسدلة للمشاريع الحية - تم توضيح خطوطها وخلفيتها بالكامل */}
             <div className="space-y-1.5">
-              <label className="block text-base font-black text-black">الموقع أو المشروع الحالي المبدئي:</label>
+              <label className="block text-base font-black text-black">الموقع الميداني الحالي المبدئي:</label>
               <select
                 value={currentProjectId}
                 onChange={(e) => setCurrentProjectId(e.target.value)}
-                className="w-full px-4 py-3 text-base font-black rounded border-2 border-solid border-black bg-white text-black outline-none focus:border-blue-900 shadow-sm cursor-pointer"
+                className="w-full px-4 py-3 text-base font-black rounded border-2 border-solid border-black bg-white text-black outline-none cursor-pointer"
               >
-                <option value="" className="font-black text-black">📍 الورشة الرئيسية (بدون مشروع)</option>
+                <option value="">🚧 الورشة المركزية (بدون مشروع حالي)</option>
                 {projectsList.map((project) => (
-                  <option key={project.id} value={project.id} className="font-black text-black">
-                    🚧 {project.name}
+                  <option key={project.id} value={project.id}>
+                    📍 {project.name}
                   </option>
                 ))}
               </select>
             </div>
           </div>
 
-          {/* 📸 قسم حقول روابط الصور الاختيارية - حدود واضحة تمنع الاختفاء في الشمس */}
-          <div className="p-4 rounded-lg border-2 border-dashed border-black bg-blue-50/50 space-y-3">
-            <span className="text-base font-black text-blue-900 block">🖼️ روابط صور الآلية (اختياري):</span>
+          {/* 📸 البوم رفع الصور التفاعلي المباشر لكلاودنري */}
+          <div className="p-4 rounded-lg border-2 border-dashed border-black bg-blue-50/50 space-y-4">
+            <span className="text-base font-black text-blue-900 block">🖼️ ألبوم صور الآلية بالميدان (اختياري):</span>
             
-            <div className="space-y-2">
-              <input
-                type="text"
-                placeholder="رابط الصورة الأمامية للمعدة (Cloudinary URL)"
-                value={frontImageUrl}
-                onChange={(e) => setFrontImageUrl(e.target.value)}
-                className="w-full px-4 py-2.5 text-sm font-black rounded border-2 border-solid border-black bg-white text-blue-900 placeholder:text-blue-900/70 outline-none focus:border-blue-900"
-              />
-              <input
-                type="text"
-                placeholder="رابط الصورة الخلفية للمعدة (Cloudinary URL)"
-                value={backImageUrl}
-                onChange={(e) => setBackImageUrl(e.target.value)}
-                className="w-full px-4 py-2.5 text-sm font-black rounded border-2 border-solid border-black bg-white text-blue-900 placeholder:text-blue-900/70 outline-none focus:border-blue-900"
-              />
-              <input
-                type="text"
-                placeholder="رابط صورة كود/لوحة المعدة (Cloudinary URL)"
-                value={codeImageUrl}
-                onChange={(e) => setCodeImageUrl(e.target.value)}
-                className="w-full px-4 py-2.5 text-sm font-black rounded border-2 border-solid border-black bg-white text-blue-900 placeholder:text-blue-900/70 outline-none focus:border-blue-900"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              
+              {/* صورة أمامية */}
+              <div className="flex flex-col items-center p-3 rounded-lg border-2 border-solid border-black bg-white">
+                <span className="text-xs font-black mb-2 text-black">📷 صورة (أمامية)</span>
+                <input type="file" accept="image/*" id="front-img" className="hidden" onChange={(e) => handleImageChange(e, 'front')} />
+                <label htmlFor="front-img" className="w-full text-center bg-slate-100 hover:bg-slate-200 text-black text-xs font-black py-2 px-1 rounded border border-solid border-black cursor-pointer transition-all">
+                  {uploadingFront ? '⏳ جاري الرفع...' : frontImageUrl ? '✅ تم الرفع' : '➕ إختر صورة'}
+                </label>
+                {frontImageUrl && <span className="text-[10px] text-emerald-700 font-bold mt-1 text-center truncate w-full">جاهزة ومربوطة</span>}
+              </div>
+
+              {/* صورة خلفية */}
+              <div className="flex flex-col items-center p-3 rounded-lg border-2 border-solid border-black bg-white">
+                <span className="text-xs font-black mb-2 text-black">📷 صورة (خلفية)</span>
+                <input type="file" accept="image/*" id="back-img" className="hidden" onChange={(e) => handleImageChange(e, 'back')} />
+                <label htmlFor="back-img" className="w-full text-center bg-slate-100 hover:bg-slate-200 text-black text-xs font-black py-2 px-1 rounded border border-solid border-black cursor-pointer transition-all">
+                  {uploadingBack ? '⏳ جاري الرفع...' : backImageUrl ? '✅ تم الرفع' : '➕ إختر صورة'}
+                </label>
+                {backImageUrl && <span className="text-[10px] text-emerald-700 font-bold mt-1 text-center truncate w-full">جاهزة ومربوطة</span>}
+              </div>
+
+              {/* صورة الكود/اللوحة */}
+              <div className="flex flex-col items-center p-3 rounded-lg border-2 border-solid border-black bg-white">
+                <span className="text-xs font-black mb-2 text-black">📷 صورة (كود/لوحة)</span>
+                <input type="file" accept="image/*" id="code-img" className="hidden" onChange={(e) => handleImageChange(e, 'code')} />
+                <label htmlFor="code-img" className="w-full text-center bg-slate-100 hover:bg-slate-200 text-black text-xs font-black py-2 px-1 rounded border border-solid border-black cursor-pointer transition-all">
+                  {uploadingCode ? '⏳ جاري الرفع...' : codeImageUrl ? '✅ تم الرفع' : '➕ إختر صورة'}
+                </label>
+                {codeImageUrl && <span className="text-[10px] text-emerald-700 font-bold mt-1 text-center truncate w-full">جاهزة ومربوطة</span>}
+              </div>
+
             </div>
           </div>
 
-          {/* أزرار التحكم والاعتماد السفلي */}
           <div className="pt-4 border-t-4 border-solid border-black flex justify-end gap-4 items-center">
-            <button 
-              type="button" 
-              onClick={onClose} 
-              disabled={submitting} 
-              className="text-base font-black text-black bg-transparent border-0 cursor-pointer hover:underline px-2 py-1"
-            >
-              إلغاء الأمر
-            </button>
-            <button 
-              type="submit" 
-              disabled={submitting} 
-              className="bg-blue-900 hover:bg-blue-950 text-white font-black text-base px-8 py-3 rounded-lg border-2 border-solid border-black cursor-pointer shadow-md transition-all active:scale-95"
-            >
-              {submitting ? 'جاري الحفظ والربط حالياً...' : '💾 تثبيت الآلية في قاعدة البيانات'}
+            <button type="button" onClick={onClose} disabled={submitting} className="text-base font-black text-black hover:underline px-2 py-1">إلغاء الأمر</button>
+            <button type="submit" disabled={submitting || uploadingFront || uploadingBack || uploadingCode} className="bg-blue-900 hover:bg-blue-950 text-white font-black text-base px-8 py-3 rounded-lg border-2 border-solid border-black shadow-md transition-all active:scale-95">
+              {submitting ? 'جاري الحفظ والربط...' : '💾 تثبيت الآلية في قاعدة البيانات'}
             </button>
           </div>
 

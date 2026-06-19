@@ -4,10 +4,11 @@ import 'dotenv/config';
 import projectRouter from './routes/projects.js';
 import purchasesRouter from './routes/purchases.js'; 
 
-// استيراد الـ Routes الخاصة بالصيانة والآليات والصلاحيات
+// استيراد الـ Routes الخاصة بالصيانة والآليات والصلاحيات والرفع
 import equipmentRouter from './routes/equipment.js';
 import maintenanceRouter from './routes/maintenance.js';
 import authRouter from './routes/auth.js';
+import uploadRouter from './routes/upload.js'; // 👈 استيراد راوتر رفع الصور الجديد
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use('/api/maintenance', maintenanceRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/projects', projectRouter);
 app.use('/api/purchases', purchasesRouter); 
+app.use('/api/upload', uploadRouter); // 👈 تفعيل رابط رفع الصور لكلاودنري
 
 // رابط تجريبي سريع للتأكد من أن السيرفر شغال وزي الورد
 app.get('/', (req, res) => {
