@@ -34,8 +34,8 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
   const fetchUsers = async () => {
     if (user.role !== 'super_admin') return;
     try {
-      // 🌟 تعديل المسار ليتوافق مع آلية الباك إند المباشرة الموثقة عندك
-      const res = await fetch(`${baseUrl}/api/users`); 
+      // 🔗 تم توجيه المسار عبر بوابة الـ /api/auth الصحيحة في السيرفر
+      const res = await fetch(`${baseUrl}/api/auth/users`); 
       if (res.ok) {
         const data = await res.json();
         setUsersList(data);
@@ -55,8 +55,8 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
     setPasswordMsg({ text: '', isError: false });
 
     try {
-      // 🌟 تعديل مسار تحديث كلمة المرور المباشر
-      const res = await fetch(`${baseUrl}/api/change-password`, {
+      // 🔗 تم توجيه المسار عبر بوابة الـ /api/auth الصحيحة في السيرفر
+      const res = await fetch(`${baseUrl}/api/auth/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -84,8 +84,8 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
     setAdminMsg('');
 
     try {
-      // 🌟 تعديل مسار إضافة حساب مستخدم جديد المباشر
-      const res = await fetch(`${baseUrl}/api/users`, {
+      // 🔗 تم توجيه المسار عبر بوابة الـ /api/auth الصحيحة في السيرفر
+      const res = await fetch(`${baseUrl}/api/auth/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
