@@ -1,9 +1,9 @@
 // client/src/pages/Dashboard.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Fleet } from './Fleet';
 import { Reports } from './Reports';
 import { Profile } from './Profile';
-import { AiChat } from './AiChat'; // ➕ استيراد صفحة الشات المستقلة التي أنشأتها
+import { AiChat } from './AiChat'; 
 
 interface DashboardProps {
   user: { id: number; name: string; username: string; role: 'super_admin' | 'sub_admin' | 'viewer' };
@@ -11,59 +11,77 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
-  // ⚙️ تم تحديث الحالة لتدعم التوجيه لصفحة الذكاء الاصطناعي الجديدة 'ai_chat'
-  const [currentView, setCurrentView] = useState<'hub' | 'fleet' | 'reports' | 'profile' | 'ai_chat'>('hub');
+  // 💾 قراءة الصفحة الأخيرة المحفوظة من الـ localStorage عند تحميل المكون، أو العودة لـ 'hub' كافتراضي
+  const [currentView, setCurrentView] = useState<'hub' | 'fleet' | 'reports' | 'profile' | 'ai_chat'>(() => {
+    const savedView = localStorage.getItem('wadi_dafa_current_view');
+    return (savedView as any) || 'hub';
+  });
+  
   const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // 🔄 حفظ الصفحة الجديدة في الـ localStorage تلقائياً كلما تغيرت الواجهة
+  const handleViewChange = (view: 'hub' | 'fleet' | 'reports' | 'profile' | 'ai_chat') => {
+    setCurrentView(view);
+    localStorage.setItem('wadi_dafa_current_view', view);
+  };
+
+  // لتنظيف التخزين عند تسجيل الخروج التام
+  const handleExtendedLogout = () => {
+    localStorage.removeItem('wadi_dafa_current_view');
+    onLogout();
+  };
 
   return (
     <div className={`min-h-screen w-full overflow-x-hidden ${isDarkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'} transition-colors duration-300 font-sans`} dir="rtl">
       
-      {/* الهيدر المؤسسي */}
-      <header className={`border-b ${isDarkMode ? 'bg-slate-900 border-slate-850' : 'bg-slate-900 border-slate-800'} text-white px-4 md:px-6 py-4 sticky top-0 z-40 shadow-md w-full box-border`}>
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          
-          {/* الجانب الأيمن - الهوية الرسمية */}
-          <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
-            {currentView !== 'hub' && (
-              <button 
-                onClick={() => setCurrentView('hub')} 
-                className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-all border border-solid border-white/20 cursor-pointer text-xs md:text-sm font-semibold shrink-0"
-              >
-                الرئيسية
-              </button>
-            )}
-            <div className="text-right">
-              <h1 className="text-xl md:text-2xl font-bold text-white m-0 tracking-wide">شركة وادي دفا للمقاولات</h1>
-              <p className="text-xs md:text-sm text-slate-450 font-normal m-0 mt-1">نظام إدارة صيانة المعدات والمركبات</p>
-            </div>
-          </div>
-
-          {/* الجانب الأيسر - التحكم والمسؤوليات */}
-          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 md:gap-3 w-full sm:w-auto">
-            <button 
-              onClick={() => setIsDarkMode(!isDarkMode)} 
-              className="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-solid border-white/10 text-slate-300 cursor-pointer text-xs font-medium transition-all"
-            >
-              {isDarkMode ? 'الوضع الفاتح' : 'الوضع الداكن'}
-            </button>
+      {/* الهيدر المؤسسي يظهر فقط في الصفحة الرئيسية (hub) */}
+      {currentView === 'hub' && (
+        <header className={`border-b ${isDarkMode ? 'bg-slate-900 border-slate-850' : 'bg-slate-900 border-slate-800'} text-white px-4 md:px-6 py-4 sticky top-0 z-40 shadow-md w-full box-border`}>
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
             
-            <button 
-              onClick={() => setCurrentView('profile')} 
-              className={`px-3 py-2 rounded-lg text-xs font-semibold border border-solid transition-all cursor-pointer ${currentView === 'profile' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
-            >
-              المستخدم: {user.name}
-            </button>
+            {/* الجانب الأيمن - الهوية الرسمية واللوجو */}
+            <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
+              <div className="flex items-center gap-3">
+                <img 
+                  src="/logo.jpg" 
+                  alt="شعار الشركة" 
+                  className="w-12 h-12 md:w-14 md:h-14 object-contain border border-solid border-white/20 rounded bg-white p-0.5" 
+                  onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} 
+                />
+                <div className="text-right">
+                  <h1 className="text-xl md:text-2xl font-bold text-white m-0 tracking-wide">شركة وادي دفا للمقاولات</h1>
+                  <p className="text-xs md:text-sm text-slate-400 font-normal m-0 mt-1">نظام إدارة صيانة المعدات والمركبات</p>
+                </div>
+              </div>
+            </div>
 
-            <button 
-              onClick={onLogout} 
-              className="bg-red-700/90 hover:bg-red-700 text-white border-0 px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all shadow-sm"
-            >
-              تسجيل الخروج
-            </button>
+            {/* الجانب الأيسر - التحكم والمسؤوليات */}
+            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 md:gap-3 w-full sm:w-auto">
+              <button 
+                onClick={() => setIsDarkMode(!isDarkMode)} 
+                className="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-solid border-white/10 text-slate-300 cursor-pointer text-xs font-medium transition-all"
+              >
+                {isDarkMode ? 'الوضع الفاتح' : 'الوضع الداكن'}
+              </button>
+              
+              <button 
+                onClick={() => handleViewChange('profile')} 
+                className={`px-3 py-2 rounded-lg text-xs font-semibold border border-solid transition-all cursor-pointer ${currentView === 'profile' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}
+              >
+                المستخدم: {user.name}
+              </button>
+
+              <button 
+                onClick={handleExtendedLogout} 
+                className="bg-red-700/90 hover:bg-red-700 text-white border-0 px-4 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-all shadow-sm"
+              >
+                تسجيل الخروج
+              </button>
+            </div>
+
           </div>
-
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* الحاوية الرئيسية للمحتوى */}
       <main className="max-w-7xl mx-auto p-4 md:p-8 w-full box-border overflow-x-hidden">
@@ -74,7 +92,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
               
               {/* بطاقة إدارة الأسطول */}
               <button 
-                onClick={() => setCurrentView('fleet')} 
+                onClick={() => handleViewChange('fleet')} 
                 className={`w-full text-right p-6 md:p-8 rounded-xl border border-solid transition-all transform hover:-translate-y-0.5 flex items-center justify-between group cursor-pointer ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white hover:border-slate-700' : 'bg-white border-slate-200 text-slate-900 shadow-sm hover:border-slate-300'}`}
               >
                 <div className="space-y-2">
@@ -89,7 +107,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
 
               {/* بطاقة التقارير */}
               <button 
-                onClick={() => setCurrentView('reports')} 
+                onClick={() => handleViewChange('reports')} 
                 className={`w-full text-right p-6 md:p-8 rounded-xl border border-solid transition-all transform hover:-translate-y-0.5 flex items-center justify-between group cursor-pointer ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white hover:border-slate-700' : 'bg-white border-slate-200 text-slate-900 shadow-sm hover:border-slate-300'}`}
               >
                 <div className="space-y-2">
@@ -102,9 +120,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 </div>
               </button>
 
-              {/* ➕ بطاقة المستشار الفني والمحلل الذكي الجديدة (تمت إضافتها هندسياً هنا) */}
+              {/* بطاقة المستشار الفني والمحلل الذكي */}
               <button 
-                onClick={() => setCurrentView('ai_chat')} 
+                onClick={() => handleViewChange('ai_chat')} 
                 className={`w-full text-right p-6 md:p-8 rounded-xl border border-solid transition-all transform hover:-translate-y-0.5 flex items-center justify-between group cursor-pointer ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white hover:border-slate-700' : 'bg-white border-slate-200 text-slate-900 shadow-sm hover:border-slate-300'}`}
               >
                 <div className="space-y-2">
@@ -121,11 +139,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
           </div>
         )}
 
-        {/* عرض المكونات الفرعية بناءً على التوجيه المحدث */}
+        {/* زر "الرئيسية" العائم والموحد */}
+        {currentView !== 'hub' && (
+          <div className="mb-6 flex justify-between items-center bg-slate-900 text-white p-3 rounded-xl shadow-md no-print">
+            <div className="flex items-center gap-3">
+              <img 
+                src="/logo.jpg" 
+                alt="شعار الشركة" 
+                className="w-8 h-8 object-contain rounded bg-white p-0.5" 
+                onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} 
+              />
+              <span className="text-xs md:text-sm font-bold">شركة وادي دفا للمقاولات</span>
+            </div>
+            <button 
+              onClick={() => handleViewChange('hub')} 
+              className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-all border border-solid border-white/20 cursor-pointer text-xs md:text-sm font-semibold"
+            >
+              الرجوع للرئيسية ↩
+            </button>
+          </div>
+        )}
+
+        {/* عرض المكونات الفرعية بناءً على التوجيه المستقر */}
         {currentView === 'fleet' && <Fleet isDarkMode={isDarkMode} userRole={user.role} />}
         {currentView === 'reports' && <Reports isDarkMode={isDarkMode} />}
         {currentView === 'profile' && <Profile user={user} isDarkMode={isDarkMode} />}
-        {currentView === 'ai_chat' && <AiChat isDarkMode={isDarkMode} />} {/* ➕ عرض صفحة الشات */}
+        {currentView === 'ai_chat' && <AiChat isDarkMode={isDarkMode} />} 
 
       </main>
     </div>
