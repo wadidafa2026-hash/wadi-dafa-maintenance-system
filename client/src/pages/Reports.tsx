@@ -169,7 +169,7 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
   return (
     <div className="space-y-6 box-border w-full text-black" dir="rtl">
       
-      {/* الهيدر الرسمي الموحد - يظهر في الطباعة فقط */}
+      {/* الهيدر الرسمي الموحد - يظهر في الطباعة فقط بشكل نظيف وبداية الصفحة */}
       <div className="hidden print:flex items-center justify-between border-b-4 border-double border-black pb-4 mb-4 w-full">
         <div className="flex items-center gap-4">
           <img src="/logo.jpg" alt="شعار الشركة" className="w-20 h-20 object-contain border-2 border-solid border-black rounded" onError={(e)=>{(e.target as HTMLElement).style.display='none'}} />
@@ -296,7 +296,6 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
       {loading ? (
         <p className="text-center text-sm font-black text-blue-900 animate-pulse">جاري تحميل البيانات من النظام...</p>
       ) : reportTab === 'assets' ? (
-        /* حاوية مرنة تسمح بالتمرير الأفقي على الشاشات الصغيرة وتلغى تلقائياً عند الطباعة */
         <div className="rounded-xl border-4 border-solid border-black overflow-x-auto bg-white shadow-md print:border-2 print:overflow-visible w-full">
           <table className="w-full text-right border-collapse text-sm min-w-[900px] print:min-w-full print:table-auto">
             <thead>
@@ -328,7 +327,6 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
                     </td>
                     <td className="p-3 font-black text-blue-950 uppercase text-xs border-2 border-solid border-black bg-slate-50">{record.equipmentCode}</td>
                     
-                    {/* خلية التفاصيل مرنة ومنعطفة بشكل سليم لمنع ظهور النصوص عمودياً */}
                     <td className="p-3 border-2 border-solid border-black text-right text-xs font-black leading-relaxed break-words whitespace-pre-line min-w-[200px]">
                       {record.details || 'لم تدون تفاصيل'}
                     </td>
@@ -477,10 +475,11 @@ export const Reports: React.FC<ReportsProps> = ({ isDarkMode }) => {
         </div>
       )}
 
-      {/* أنماط الطباعة المخصصة لضمان النظافة والوضوح التام */}
+      {/* أنماط الطباعة المخصصة لضمان النظافة والوضوح التام وعزل الهيدر المكرر */}
       <style>{`
         @media print {
-          .no-print, button, select, input, textarea, .bg-amber-100 {
+          /* استهداف وإخفاء الهيدر الخارجي التابع للنظام لتجنب التكرار الرمادي */
+          header, .no-print, button, select, input, textarea, .bg-amber-100 {
             display: none !important;
           }
           body {
