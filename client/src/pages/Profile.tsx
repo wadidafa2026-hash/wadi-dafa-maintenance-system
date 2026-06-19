@@ -34,7 +34,8 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
   const fetchUsers = async () => {
     if (user.role !== 'super_admin') return;
     try {
-      const res = await fetch(`${baseUrl}/api/users`); // نقطة الاتصال بالباك إند لجلب النظام
+      // 🌟 التوجيه للمسار الصحيح الموثق بالسيرفر
+      const res = await fetch(`${baseUrl}/api/auth/users`); 
       if (res.ok) {
         const data = await res.json();
         setUsersList(data);
@@ -54,10 +55,15 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
     setPasswordMsg({ text: '', isError: false });
 
     try {
+      // 🌟 التوجيه لـ /api/auth/change-password مع تمرير الـ username المطلوب بالسيرفر
       const res = await fetch(`${baseUrl}/api/auth/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword, newPassword })
+        body: JSON.stringify({ 
+          username: user.username, 
+          currentPassword, 
+          newPassword 
+        })
       });
       const data = await res.json();
       if (res.ok) {
@@ -78,7 +84,8 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
     setAdminMsg('');
 
     try {
-      const res = await fetch(`${baseUrl}/api/users`, {
+      // 🌟 التوجيه لـ /api/auth/users لإرسال الحساب الجديد
+      const res = await fetch(`${baseUrl}/api/auth/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -169,10 +176,10 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
           <div className="p-6 rounded-xl border-4 border-solid border-black bg-white space-y-6 shadow-md">
             <div>
               <h3 className="text-base font-black text-blue-900 m-0">🛠️ لوحة تحكم وإصدار صلاحيات المشرفين</h3>
-              <p className="text-xs text-black font-black m-0 mt-1">بصفتك مديراً عاماً للنظام، يمكنك منح أو سحب صلاحيات المراقبة والصيانة لشركة وادي دفا.</p>
+              <p className="text-xs text-black font-black m-0 mt-1">بصفتك مديراً عاماً للنظام, يمكنك منح أو سحب صلاحيات المراقبة والصيانة لشركة وادي دفا.</p>
             </div>
 
-            {/* نموذج إضافة حساب مشرف جديد - تم التخلص من الشفافيات الباهتة بالكامل */}
+            {/* نموذج إضافة حساب مشرف جديد */}
             <form onSubmit={handleCreateAdmin} className="p-4 rounded-xl bg-slate-50 border-2 border-solid border-black grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-xs text-black block font-black">اسم المشرف الكامل:</label>
@@ -263,7 +270,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, isDarkMode }) => {
 
           </div>
         ) : (
-          /* في حال كان الحساب sub_admin أو viewer تظهر له رسالة توضيحية عالية التباين والوضوح */
           <div className="p-8 rounded-xl border-4 border-solid border-black bg-white text-center space-y-3 shadow-md">
             <span className="text-4xl block">🔒</span>
             <h4 className="text-base font-black text-black m-0">قسم الصلاحيات والتحكم الإداري مقفل</h4>
