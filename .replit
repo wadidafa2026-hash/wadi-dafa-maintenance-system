@@ -1,4 +1,7 @@
-modules = ["nodejs-20"]
+disableGuessImports = true
+
+Modules = ["nodejs-20"]
+
 [agent]
 expertMode = true
 stack = "BEST_EFFORT_FALLBACK"
@@ -15,3 +18,6 @@ localPort = 5173
 
 [[ports]]
 localPort = 5174
+
+[run]
+command = "echo 'يا هندسة، افتح الـ Shell لتشغيل الـ client والـ server يدوياً بـ pnpm'"
